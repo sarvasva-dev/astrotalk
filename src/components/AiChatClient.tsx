@@ -207,7 +207,7 @@ export default function AiChatClient({
     window.speechSynthesis?.cancel();
     setSpeechActiveId(messageId);
 
-    const speakerVoice = counsellor.gender === "female" ? "meera" : "arvind";
+    const speakerVoice = counsellor.gender === "female" ? "ritu" : "ratan";
 
     try {
       const res = await fetch("/api/tts", {
@@ -233,8 +233,12 @@ export default function AiChatClient({
             setSpeechActiveId(null);
             currentAudioRef.current = null;
           };
-          await audio.play();
-          return;
+          try {
+            await audio.play();
+            return;
+          } catch (playErr) {
+            console.warn("[TTS] Autoplay blocked in chat view:", playErr);
+          }
         }
       }
     } catch {

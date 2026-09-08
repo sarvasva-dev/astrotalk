@@ -46,10 +46,12 @@ export class SarvamAIService {
 
     try {
       const formData = new FormData();
-      const blob = new Blob([audioBuffer], { type: mimeType });
+      const uint8Array = new Uint8Array(audioBuffer.buffer, audioBuffer.byteOffset, audioBuffer.byteLength);
+      const blob = new Blob([uint8Array], { type: mimeType });
       formData.append("file", blob, fileName);
       formData.append("model", "saaras:v2");
-      formData.append("language_code", "hi-IN");
+      // Use 'unknown' for Sarvam auto-detecting Hindi, Hinglish, English, and regional speech
+      formData.append("language_code", "unknown");
       formData.append("with_timestamps", "false");
 
       const res = await fetch("https://api.sarvam.ai/speech-to-text", {
@@ -84,21 +86,22 @@ export class SarvamAIService {
   }
 
   /**
-   * Synthesize natural Indian speech audio using Sarvam bulbul:v1
-   * Speaker options: 'meera' (female), 'pavithra' (female), 'arvind' (male), 'maitra' (male)
+   * Synthesize natural Indian speech audio using Sarvam bulbul:v3
+   * Speakers for female: 'ritu', 'simran', 'priya', 'pooja'
+   * Speakers for male: 'ratan', 'shubh', 'aditya', 'rahul'
    */
   public static async textToSpeech(
     text: string,
-    speaker: "meera" | "pavithra" | "arvind" | "maitra" = "meera",
+    speaker: "ritu" | "simran" | "ratan" | "shubh" | "meera" | "arvind" = "ritu",
     languageCode = "hi-IN"
   ): Promise<{ audioBase64: string | null; isFallback: boolean; speaker: string }> {
     const apiKey = this.getApiKey();
 
-    // Clean text of markdown and non-verbal tokens
+    // Clean text of markdown, citations, and non-verbal symbols
     const cleanText = text
-      .replace(/[*#_`]/g, "")
-      .replace(/\n+/g, " ")
-      .slice(0, 500) // Ensure within API chunk limits
+      .replace(/[*#_`~[\]()]/g, "")
+      .replace(/\s+/g, " ")
+      .slice(0, 480) // Ensure safe chunk boundary for Sarvam TTS API
       .trim();
 
     if (!apiKey) {
@@ -110,6 +113,19 @@ export class SarvamAIService {
       };
     }
 
+    // Map legacy or default speaker names to valid Sarvam bulbul:v3 speakers
+    let validSpeaker = speaker as string;
+    if (validSpeaker === "meera" || validSpeaker === "pavithra" || validSpeaker === "anushka") {
+      validSpeaker = "ritu";
+    }
+    if (validSpeaker === "arvind" || validSpeaker === "maitra" || validSpeaker === "abhilash") {
+      validSpeaker = "ratan";
+    }
+
+    // Auto-detect target language code based on text script (Devanagari vs Latin)
+    const hasDevanagari = /[\u0900-\u097F]/.test(cleanText);
+    const targetLang = hasDevanagari ? "hi-IN" : (languageCode || "hi-IN");
+
     try {
       const res = await fetch("https://api.sarvam.ai/text-to-speech", {
         method: "POST",
@@ -119,14 +135,14 @@ export class SarvamAIService {
         },
         body: JSON.stringify({
           inputs: [cleanText],
-          target_language_code: languageCode,
-          speaker: speaker,
+          target_language_code: targetLang,
+          speaker: validSpeaker,
           pitch: 0,
-          pace: 0.95,
+          pace: 0.98,
           loudness: 1.5,
           speech_sample_rate: 22050,
           enable_preprocessing: true,
-          model: "bulbul:v1",
+          model: "bulbul:v3",
         }),
       });
 

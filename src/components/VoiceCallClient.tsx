@@ -68,10 +68,10 @@ export default function VoiceCallClient({
       stopAudio();
       setLastSpokenText(text);
 
-      const speakerVoice = counsellor.gender === "female" ? "meera" : "arvind";
+      const speakerVoice = counsellor.gender === "female" ? "ritu" : "ratan";
 
       try {
-        // 1. Try Sarvam TTS bulbul:v1
+        // 1. Try Sarvam TTS (bulbul:v3)
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -96,8 +96,12 @@ export default function VoiceCallClient({
               setAstrologerSpeaking(false);
               currentAudioRef.current = null;
             };
-            await audio.play();
-            return;
+            try {
+              await audio.play();
+              return;
+            } catch (playErr) {
+              console.warn("[TTS] Autoplay prevented, proceeding to fallback:", playErr);
+            }
           }
         }
       } catch (err) {

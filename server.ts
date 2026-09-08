@@ -1,7 +1,7 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import dotenv from "dotenv";
 import multer from "multer";
 import { GoogleGenAI } from "@google/genai";
 import { calculateVedicChartV1, runGoldenTestSuite } from "./src/lib/vedicEngine/calculationEngine";
@@ -21,8 +21,6 @@ import {
   verifyWebhookSignature,
   RECHARGE_PACKS,
 } from "./src/lib/razorpay";
-
-dotenv.config();
 
 const app = express();
 const PORT = 3000;
