@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  * 
- * Astrotalk Vedic Calculation Engine V1.0.0 - Canonical Specification
+ * Astroguru Vedic Calculation Engine V1.0.0 - Canonical Specification
  * 
  * Phase 1A: Astronomical Core (UTC, JD, Obliquity, Greenwich & Local Sidereal Time)
  * Phase 1B: Sidereal Conversion (Lahiri / Chitra Paksha Ayanamsha)
@@ -13,7 +13,7 @@
  */
 
 export interface ProvenanceRecord {
-  engine: "astrotalk-calculation-engine";
+  engine: "astroguru-calculation-engine";
   engineVersion: "1.0.0";
   ayanamsa: "LAHIRI";
   ayanamsaValue: number;
@@ -735,7 +735,7 @@ export function calculateVedicChartV1(params: {
   const ayanamsa = calculateLahiriAyanamsha(jd);
 
   const provenance: ProvenanceRecord = {
-    engine: "astrotalk-calculation-engine",
+    engine: "astroguru-calculation-engine",
     engineVersion: "1.0.0",
     ayanamsa: "LAHIRI",
     ayanamsaValue: Math.round(ayanamsa * 1000000) / 1000000,

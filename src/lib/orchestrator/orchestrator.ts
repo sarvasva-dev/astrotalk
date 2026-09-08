@@ -17,7 +17,7 @@ export interface PipelineExecutionResult {
 }
 
 /**
- * Astrotalk AI Orchestrator Master Pipeline
+ * Astroguru AI Orchestrator Master Pipeline
  */
 export async function executeOrchestratorPipeline(
   userQuestion: string,

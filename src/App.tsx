@@ -21,12 +21,21 @@ import {
   Scale,
   Landmark,
   Briefcase,
-  Cpu
+  Cpu,
 } from "lucide-react";
-import type { Counsellor, UserProfile, CategorySlug, FilterMode, KundliData, OrchestratorTrace } from "./types";
+import type {
+  Counsellor,
+  UserProfile,
+  CategorySlug,
+  FilterMode,
+  KundliData,
+  OrchestratorTrace,
+  PageRoute,
+} from "./types";
 import { SEED_COUNSELLORS, CATEGORIES, FILTER_MODES } from "./data/counsellors";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
+import { Footer } from "./components/Footer";
 import CounsellorCard from "./components/CounsellorCard";
 import CounsellorModal from "./components/CounsellorModal";
 import AiChatClient from "./components/AiChatClient";
@@ -38,9 +47,17 @@ import WalletModal from "./components/WalletModal";
 import OnboardingModal from "./components/OnboardingModal";
 import OrchestratorHUD from "./components/OrchestratorHUD";
 import { AICreditManager } from "./lib/orchestrator/creditManager";
+import { getCurrentRoute, navigateTo } from "./lib/router";
 
-const STORAGE_PROFILE_KEY = "astrotalk_user_profile";
-const STORAGE_WALLET_KEY = "astrotalk_wallet_balance";
+// Pages
+import { LandingPage } from "./components/pages/LandingPage";
+import { AstrologerProfilePage } from "./components/pages/AstrologerProfilePage";
+import { KundliMatchingPage } from "./components/pages/KundliMatchingPage";
+import { UserProfilePage } from "./components/pages/UserProfilePage";
+import { SEOArticleHubPage } from "./components/pages/SEOArticleHubPage";
+
+const STORAGE_PROFILE_KEY = "astroguru_user_profile";
+const STORAGE_WALLET_KEY = "astroguru_wallet_balance";
 
 const DEFAULT_PROFILE: UserProfile = {
   displayName: "Rahul Sharma",
@@ -51,7 +68,39 @@ const DEFAULT_PROFILE: UserProfile = {
   birthPlace: "New Delhi, India",
 };
 
-export default function App() {
+interface AppProps {
+  isClerkConfigured?: boolean;
+}
+
+export default function App({ isClerkConfigured = false }: AppProps) {
+  // Routing State
+  const [currentRoute, setCurrentRoute] = useState<PageRoute>(() => getCurrentRoute());
+
+  // Listen to popstate and custom app:routechange events
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentRoute(getCurrentRoute());
+    };
+    const handleCustomRoute = (e: Event) => {
+      const customEvent = e as CustomEvent<PageRoute>;
+      if (customEvent.detail) {
+        setCurrentRoute(customEvent.detail);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("app:routechange", handleCustomRoute);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("app:routechange", handleCustomRoute);
+    };
+  }, []);
+
+  const handleNavigate = (route: PageRoute) => {
+    setCurrentRoute(route);
+    navigateTo(route);
+  };
+
   // Persistence state
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     try {
@@ -71,9 +120,13 @@ export default function App() {
     }
   });
 
-  // Navigation & filtering state
-  const [activeTab, setActiveTab] = useState<"consult" | "kundli" | "horoscope" | "tarot">("consult");
-  const [selectedCategory, setSelectedCategory] = useState<CategorySlug | "all">("all");
+  // Consult filtering state
+  const [selectedCategory, setSelectedCategory] = useState<CategorySlug | "all">(() => {
+    if (currentRoute.page === "consult" && currentRoute.category) {
+      return currentRoute.category as CategorySlug;
+    }
+    return "all";
+  });
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -141,7 +194,7 @@ export default function App() {
     return false;
   };
 
-  // Filter counsellors
+  // Filter counsellors for Consult catalog
   const filteredCounsellors = useMemo(() => {
     return SEED_COUNSELLORS.filter((c) => {
       // Category filter
@@ -250,21 +303,66 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-[#f6efdc] text-[#1b1612]">
       {/* Top Header Navbar */}
       <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        currentRoute={currentRoute}
+        onNavigate={handleNavigate}
         walletBalance={walletBalance}
         userProfile={userProfile}
         onOpenWallet={() => setIsWalletOpen(true)}
-        onOpenProfile={() => setIsOnboardingOpen(true)}
+        onOpenProfile={() => handleNavigate({ page: "profile" })}
         onOpenOrchestrator={() => setIsOrchestratorOpen(true)}
         aiCredits={creditProfile.creditsRemaining}
+        isClerkConfigured={isClerkConfigured}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-20 md:pb-12">
-        {activeTab === "consult" && (
+      <main className="flex-1 pb-20 md:pb-0">
+        {/* 1. LANDING PAGE */}
+        {currentRoute.page === "landing" && (
+          <LandingPage
+            onNavigate={handleNavigate}
+            onStartChat={(c) => setActiveChatCounsellor(c)}
+            onStartCall={(c) => setActiveCallCounsellor(c)}
+            userProfile={userProfile}
+          />
+        )}
+
+        {/* 2. DEDICATED ASTROLOGER PROFILE PAGE (/astrologer/:slug) */}
+        {currentRoute.page === "astrologer-detail" && (
+          <AstrologerProfilePage
+            slug={currentRoute.slug}
+            onNavigate={handleNavigate}
+            onStartChat={(c) => setActiveChatCounsellor(c)}
+            onStartCall={(c) => setActiveCallCounsellor(c)}
+            userProfile={userProfile}
+          />
+        )}
+
+        {/* 3. KUNDLI MATCHING (GUN MILAN 36 GUNAS) */}
+        {currentRoute.page === "kundli-matching" && (
+          <KundliMatchingPage onNavigate={handleNavigate} />
+        )}
+
+        {/* 4. USER PROFILE & SAVED KUNDLIS */}
+        {currentRoute.page === "profile" && (
+          <UserProfilePage
+            initialTab={currentRoute.tab}
+            userProfile={userProfile}
+            walletBalance={walletBalance}
+            onUpdateProfile={(up) => setUserProfile(up)}
+            onOpenWallet={() => setIsWalletOpen(true)}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {/* 5. SEO ARTICLE KNOWLEDGE HUB (/blogs or /blog/:slug) */}
+        {currentRoute.page === "blogs" && (
+          <SEOArticleHubPage slug={currentRoute.slug} onNavigate={handleNavigate} />
+        )}
+
+        {/* 6. CONSULT DIRECTORY CATALOG (/consult) */}
+        {currentRoute.page === "consult" && (
           <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
-            {/* Welcome Banner with Free Consultation Credit notification */}
+            {/* Welcome Banner */}
             <div className="card-paper p-5 bg-gradient-to-r from-[#fbf6e8] via-[#f8f0d8] to-[#f4e6cf] border-[#c9b884] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div className="w-12 h-12 rounded-full bg-[#fae6cf] border border-[#f3a76d] flex items-center justify-center text-[#c8531c] shrink-0">
@@ -301,7 +399,7 @@ export default function App() {
                 <button
                   id="banner-btn-kundli"
                   type="button"
-                  onClick={() => setActiveTab("kundli")}
+                  onClick={() => handleNavigate({ page: "kundli" })}
                   className="btn-outline text-xs px-3.5 py-1.5"
                 >
                   View My Kundli
@@ -352,9 +450,8 @@ export default function App() {
               })}
             </div>
 
-            {/* Filter Modes (All / Celebrity / New) & Search Bar */}
+            {/* Filter Modes & Search Bar */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              {/* Filter Pills */}
               <div className="flex items-center gap-1.5 bg-[#ebe2c8] p-1 rounded-full border border-[#d9cda7] w-fit">
                 {FILTER_MODES.map((mode) => {
                   const isSelected = filterMode === mode.slug;
@@ -375,7 +472,6 @@ export default function App() {
                 })}
               </div>
 
-              {/* Search Bar */}
               <div className="relative flex-1 sm:max-w-xs">
                 <input
                   id="search-astrologers-input"
@@ -424,7 +520,7 @@ export default function App() {
                     key={counsellor.slug}
                     c={counsellor}
                     index={idx}
-                    onSelect={(c) => setInspectedCounsellor(c)}
+                    onSelect={(c) => handleNavigate({ page: "astrologer-detail", slug: c.slug })}
                     onStartChat={(c) => setActiveChatCounsellor(c)}
                     onStartCall={(c) => setActiveCallCounsellor(c)}
                   />
@@ -434,24 +530,28 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === "kundli" && (
+        {/* 7. JANAM KUNDLI VIEWER (/kundli) */}
+        {currentRoute.page === "kundli" && (
           <KundliViewer
             userProfile={userProfile}
-            onEditProfile={() => setIsOnboardingOpen(true)}
-            onConsultChart={() => {
-              setActiveTab("consult");
-            }}
+            onEditProfile={() => handleNavigate({ page: "profile" })}
+            onConsultChart={() => handleNavigate({ page: "consult" })}
             onLoadGoldenFixture={handleLoadGoldenFixture}
           />
         )}
 
-        {activeTab === "horoscope" && <HoroscopePanchang />}
+        {/* 8. HOROSCOPE & PANCHANG (/horoscope) */}
+        {currentRoute.page === "horoscope" && <HoroscopePanchang />}
 
-        {activeTab === "tarot" && <TarotReader />}
+        {/* 9. TAROT CARD READING (/tarot) */}
+        {currentRoute.page === "tarot" && <TarotReader />}
       </main>
 
+      {/* Global Enterprise Footer */}
+      <Footer onNavigate={handleNavigate} />
+
       {/* Mobile Bottom Navigation */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      <BottomNav currentRoute={currentRoute} onNavigate={handleNavigate} />
 
       {/* Astrologer Profile Modal */}
       {inspectedCounsellor && (

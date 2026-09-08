@@ -45,7 +45,7 @@ function getAIClient(): GoogleGenAI | null {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", service: "astrotalk", time: new Date().toISOString() });
+  res.json({ status: "ok", service: "astroguru", time: new Date().toISOString() });
 });
 
 // Chat endpoint with AI Orchestrator & Evidence Architecture
@@ -77,7 +77,7 @@ app.post("/api/chat", async (req, res) => {
 
     let contextBlock = "The client has not yet provided birth chart details.";
     if (prunedFacts && Object.keys(prunedFacts).length > 0) {
-      contextBlock = `PRUNED RELEVANT CHART FACTS (Calculated by Astrotalk Vedic Engine - DO NOT RECALCULATE):
+      contextBlock = `PRUNED RELEVANT CHART FACTS (Calculated by Astroguru Vedic Engine - DO NOT RECALCULATE):
 ${JSON.stringify(prunedFacts, null, 2)}`;
     } else if (profile?.displayName && profile?.birthDate) {
       contextBlock = `CLIENT BIRTH DETAILS:
@@ -104,7 +104,7 @@ ${evidenceBlock}
 
 Guidelines:
 1. Speak in warm, genuine Hinglish / conversational Indian English as fits your persona.
-2. Reply concisely like an authentic Astrotalk counsellor: 2-4 short, immersive sentences.
+2. Reply concisely like an authentic Astroguru counsellor: 2-4 short, immersive sentences.
 3. Base your explanation and synthesis strictly on the provided pruned chart facts and classical Shastra evidence. Never invent conflicting planetary placements.
 4. If the client asks about career, marriage, health, or wealth, ground your answer in these facts and offer practical remedies (e.g. Surya Arghya, Gayatri japa, fasting, patience).
 5. Never be fatalistic or fearful; Vedic Jyotish is a lamp of hope.
@@ -727,7 +727,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Astrotalk server running on http://0.0.0.0:${PORT}`);
+    console.log(`Astroguru server running on http://0.0.0.0:${PORT}`);
   });
 }
 

@@ -25,7 +25,7 @@ export function generatePlanetConclusion(
       stepExplanation: `${planet.vedicName} in ${planet.rashi} at degree ${planet.degreeInSign.toFixed(2)}° confers ${planet.dignity} dignity. Whole-sign Parashari aspect casts drishti onto House(s): ${planet.drishtiHouses.join(", ")}.`,
     },
     provenance: {
-      engine: "astrotalk-calculation-engine",
+      engine: "astroguru-calculation-engine",
       engineVersion: "1.0.0",
       julianDate: jd,
       utcTimestamp: utc,
@@ -67,7 +67,7 @@ export function generateLagnaConclusion(
       stepExplanation: "Calculated via Local Sidereal Time (RAMC), geographic latitude, and obliquity of the ecliptic. Subtracting Lahiri Ayanamsha yields Virgo 0°40′, placing the Lagna firmly in Uttara Phalguni Pada 2.",
     },
     provenance: {
-      engine: "astrotalk-calculation-engine",
+      engine: "astroguru-calculation-engine",
       engineVersion: "1.0.0",
       julianDate: jd,
       utcTimestamp: utc,
@@ -105,7 +105,7 @@ export function generateDashaConclusion(
       stepExplanation: `At birth, Moon was at ~13°48′ Leo inside Purva Phalguni (ruled by ${nakshatraLord} for 20 years). Elapsed portion was ~3.6%, leaving a balance of ~5.9 years of Venus Mahadasha. Progressing through the classical cycle: Venus (until ~2011) -> Sun (6 yrs) -> Moon (10 yrs), placing 2026 into the Sun Mahadasha with Rahu Antardasha.`,
     },
     provenance: {
-      engine: "astrotalk-calculation-engine",
+      engine: "astroguru-calculation-engine",
       engineVersion: "1.0.0",
       julianDate: kundli?.chartV1?.provenance?.julianDate || 2453726.2674,
       utcTimestamp: kundli?.chartV1?.provenance?.utcIso || "2005-12-21T18:25:00Z",
@@ -150,7 +150,7 @@ export function generateRuleConclusion(
       stepExplanation: `This astrological interpretation is founded on classical Shastra principles applied to the native's chart factors: Lagna (${kundli?.lagna || "Virgo"}), Moon (${kundli?.moonSign || "Leo"}), and active Vimshottari period (${kundli?.chartV1?.dasha.currentMahadasha || "Sun"} Mahadasha).`,
     },
     provenance: {
-      engine: "astrotalk-calculation-engine",
+      engine: "astroguru-calculation-engine",
       engineVersion: "1.0.0",
       julianDate: jd,
       utcTimestamp: utc,

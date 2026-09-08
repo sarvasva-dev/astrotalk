@@ -287,7 +287,7 @@ export default function WhyThisConclusionModal({
               <div className="p-3 rounded-xl bg-[#fffdfa] border border-[#d9cda7] text-[11px] text-[#786a55] font-sans">
                 <strong>Why does Computational Provenance matter?</strong>
                 <p className="mt-1 leading-relaxed">
-                  In traditional AI wrappers, LLMs "guess" planetary degrees, producing severe astrological errors. Astrotalk implements a separation of concerns: mathematical planetary positions are computed deterministically via ephemeris algorithms, and the LLM only interprets verified facts.
+                  In traditional AI wrappers, LLMs "guess" planetary degrees, producing severe astrological errors. Astroguru implements a separation of concerns: mathematical planetary positions are computed deterministically via ephemeris algorithms, and the LLM only interprets verified facts.
                 </p>
               </div>
             </div>

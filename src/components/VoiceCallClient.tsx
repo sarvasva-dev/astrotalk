@@ -350,7 +350,7 @@ export default function VoiceCallClient({
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-[#1f5f5b] animate-pulse" />
           <span className="text-xs tracking-wider uppercase font-mono text-[#d9cda7]">
-            {callStatus === "connecting" ? "Connecting to Sarvam Audio..." : "Astrotalk Voice HD • Sarvam AI"}
+            {callStatus === "connecting" ? "Connecting to Sarvam Audio..." : "Astroguru Voice HD • Sarvam AI"}
           </span>
         </div>
 

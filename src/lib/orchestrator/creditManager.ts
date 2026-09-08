@@ -1,7 +1,7 @@
 import type { AICreditProfile, OrchestratorTrace } from "../../types";
 
-const CREDIT_STORAGE_KEY = "astrotalk_ai_credits_profile";
-const LEDGER_STORAGE_KEY = "astrotalk_ai_credits_ledger";
+const CREDIT_STORAGE_KEY = "astroguru_ai_credits_profile";
+const LEDGER_STORAGE_KEY = "astroguru_ai_credits_ledger";
 
 export type CreditLedgerEntry = {
   id: string;

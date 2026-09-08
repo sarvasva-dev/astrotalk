@@ -206,3 +206,93 @@ export type AICreditProfile = {
   expiresAt: string;
 };
 
+// Enterprise Multi-Page Navigation Route Definition
+export type PageRoute =
+  | { page: "landing" }
+  | { page: "consult"; category?: string }
+  | { page: "astrologer-detail"; slug: string }
+  | { page: "kundli" }
+  | { page: "kundli-matching" }
+  | { page: "horoscope"; sign?: string }
+  | { page: "tarot" }
+  | { page: "wallet" }
+  | { page: "profile"; tab?: "details" | "charts" | "history" | "ledger" }
+  | { page: "blogs"; slug?: string }
+  | { page: "support" };
+
+// Gun Milan (36 Gunas Ashta Koota) Types
+export type GunaKoota = {
+  name: "Varna" | "Vashya" | "Tara" | "Yoni" | "Graha Maitri" | "Gana" | "Bhakoot" | "Nadi";
+  maxPoints: number;
+  obtainedPoints: number;
+  description: string;
+  meaning: string;
+  isFavorable: boolean;
+};
+
+export type GunMilanResult = {
+  boyDetails: { name: string; moonSign: string; nakshatra: string; pada: number };
+  girlDetails: { name: string; moonSign: string; nakshatra: string; pada: number };
+  totalScore: number;
+  maxScore: 36;
+  recommendation: "Excellent Match" | "Good Match" | "Average Match" | "Challenging Match";
+  summary: string;
+  kootas: GunaKoota[];
+  manglikAnalysis: {
+    boyManglik: boolean;
+    girlManglik: boolean;
+    isCompatible: boolean;
+    remedies: string[];
+    explanation: string;
+  };
+  classicalVerse: {
+    text: string;
+    source: string;
+  };
+};
+
+// SEO Knowledge Hub Articles
+export type ArticleCategory = "nakshatras" | "grahas" | "yogas" | "sade-sati" | "gemstones" | "transits";
+
+export type AstrologyArticle = {
+  slug: string;
+  title: string;
+  category: ArticleCategory;
+  categoryLabel: string;
+  readTime: string;
+  publishedDate: string;
+  author: string;
+  authorRole: string;
+  excerpt: string;
+  headings: string[];
+  content: string[];
+  faqs: { question: string; answer: string }[];
+  tags: string[];
+};
+
+// Saved Kundlis for Profile Management
+export type SavedKundli = {
+  id: string;
+  relation: "Self" | "Spouse" | "Child" | "Parent" | "Friend" | "Business";
+  name: string;
+  gender: "male" | "female" | "other";
+  dob: string;
+  tob: string;
+  pob: string;
+  moonSign?: string;
+  lagna?: string;
+  savedAt: string;
+};
+
+export type PastSessionLog = {
+  id: string;
+  type: "call" | "chat";
+  counsellorName: string;
+  counsellorSlug: string;
+  counsellorPortrait: string;
+  date: string;
+  durationMinutes: number;
+  amountCharged: number;
+  status: "completed" | "interrupted";
+};
+

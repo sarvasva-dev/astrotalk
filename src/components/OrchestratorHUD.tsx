@@ -132,7 +132,7 @@ export default function OrchestratorHUD({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-display font-bold text-base sm:text-lg text-[#fdf8ed]">
-                  Astrotalk AI Orchestrator & Evidence Pipeline
+                  Astroguru AI Orchestrator & Evidence Pipeline
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#10b981]/20 text-[#34d399] border border-[#10b981]/40 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
@@ -237,7 +237,7 @@ export default function OrchestratorHUD({
                 {/* Diagram */}
                 <div className="p-4 rounded-lg bg-[#140f0c] border border-[#2d2219] font-mono text-[11px] text-[#e8dac7] overflow-x-auto">
                   <pre className="leading-relaxed text-[#cbb8a2]">
-{`                   ASTROTALK CLIENT (Question: "${currentDisplayTrace?.userQuestion || "Career kaisa rahega?"}")
+{`                   ASTROGURU CLIENT (Question: "${currentDisplayTrace?.userQuestion || "Career kaisa rahega?"}")
                                       │
                          DETERMINISTIC ENGINE CHECK
                            ├── Can answer? (Lagna, Nakshatra, Dasha, Manglik, Shastra Defs)
@@ -704,7 +704,7 @@ export default function OrchestratorHUD({
         <div className="px-5 py-3 bg-[#1e1712] border-t border-[#36291d] flex items-center justify-between text-xs text-[#8c7a65]">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-            <span>Astrotalk Multi-Provider Gateway • Quota-Shielded</span>
+            <span>Astroguru Multi-Provider Gateway • Quota-Shielded</span>
           </div>
           <button
             type="button"

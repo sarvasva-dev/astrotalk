@@ -73,7 +73,7 @@ export default function WalletModal({
           key: orderData.keyId,
           amount: orderData.amount,
           currency: orderData.currency || "INR",
-          name: "Astrotalk Jyotish",
+          name: "Astroguru Jyotish",
           description: `Wallet Recharge ₹${pack.amount} (+₹${pack.bonus} Bonus)`,
           order_id: orderData.orderId,
           handler: async function (response: any) {
@@ -104,7 +104,7 @@ export default function WalletModal({
           },
           prefill: {
             name: "Astro Seeker",
-            email: "seeker@astrotalk.com",
+            email: "seeker@astroguru.com",
             contact: "9999999999",
           },
           theme: {
@@ -176,7 +176,7 @@ export default function WalletModal({
           </div>
           <div>
             <h2 className="font-display text-xl font-bold text-[#1b1612]">
-              Astrotalk Wallet
+              Astroguru Wallet
             </h2>
             <p className="text-xs text-[#786a55]">
               Secure instant billing for Call & Chat sessions

@@ -121,7 +121,7 @@ export default function KundliViewer({
           formula: "LST + RAMC - Lahiri Ayanamsha",
         },
         provenance: {
-          engine: "astrotalk-calculation-engine",
+          engine: "astroguru-calculation-engine",
           engineVersion: "1.0.0",
           julianDate: 2453726.2674,
           utcTimestamp: "2005-12-21T18:25:00Z",
