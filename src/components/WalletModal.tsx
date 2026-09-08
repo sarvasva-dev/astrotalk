@@ -1,0 +1,142 @@
+import { useState } from "react";
+import { X, Wallet, Sparkles, Check, ArrowDownLeft, ArrowUpRight, ShieldCheck } from "lucide-react";
+
+interface WalletModalProps {
+  balance: number;
+  onClose: () => void;
+  onRecharge: (amount: number, bonus: number) => void;
+}
+
+export default function WalletModal({ balance, onClose, onRecharge }: WalletModalProps) {
+  const [selectedPack, setSelectedPack] = useState<number>(200);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const packs = [
+    { amount: 50, bonus: 0, tag: "Trial" },
+    { amount: 100, bonus: 20, tag: "20% Extra" },
+    { amount: 200, bonus: 60, tag: "Most Popular (30% Extra)" },
+    { amount: 500, bonus: 175, tag: "Best Value (35% Extra)" },
+    { amount: 1000, bonus: 400, tag: "VIP Pass (40% Extra)" },
+  ];
+
+  const handlePay = () => {
+    const pack = packs.find((p) => p.amount === selectedPack) || packs[2];
+    onRecharge(pack.amount, pack.bonus);
+    setSuccessMessage(`Recharged ₹${pack.amount} + ₹${pack.bonus} Free Bonus added to wallet!`);
+    setTimeout(() => {
+      setSuccessMessage(null);
+      onClose();
+    }, 1500);
+  };
+
+  return (
+    <div
+      id="wallet-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md rounded-2xl bg-[#fbf6e8] border border-[#c9b884] shadow-2xl p-6 text-[#1b1612]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-[#ebe2c8] text-[#786a55] transition-colors cursor-pointer"
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-3 rounded-full bg-[#fae6cf] border border-[#f3a76d] text-[#c8531c]">
+            <Wallet size={24} />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold text-[#1b1612]">
+              Astrotalk Wallet
+            </h2>
+            <p className="text-xs text-[#786a55]">
+              Secure instant billing for Call & Chat sessions
+            </p>
+          </div>
+        </div>
+
+        {/* Current Balance Display */}
+        <div className="p-4 rounded-xl bg-[#f6efdc] border border-[#e6d9b7] flex items-center justify-between mb-5">
+          <div>
+            <span className="text-xs text-[#786a55] font-semibold uppercase">Available Balance</span>
+            <div className="text-2xl font-display font-bold text-[#1b1612]">
+              ₹{balance}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-[#1f5f5b] font-semibold bg-[#d9ece8] px-2.5 py-1 rounded-full border border-[#3f8a82]">
+            <ShieldCheck size={14} />
+            100% Safe Payment
+          </div>
+        </div>
+
+        {/* Success Alert */}
+        {successMessage && (
+          <div className="mb-4 p-3 rounded-xl bg-[#d9ece8] border border-[#3f8a82] text-xs font-bold text-[#1f5f5b] flex items-center gap-2">
+            <Check size={16} />
+            {successMessage}
+          </div>
+        )}
+
+        {/* Recharge Options */}
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#786a55] block mb-2.5">
+            Select Recharge Amount
+          </span>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            {packs.map((p) => {
+              const isSelected = selectedPack === p.amount;
+              return (
+                <div
+                  key={p.amount}
+                  onClick={() => setSelectedPack(p.amount)}
+                  className={`relative p-3 rounded-xl border text-center cursor-pointer transition-all ${
+                    isSelected
+                      ? "border-[#c8531c] bg-[#fae6cf] shadow-xs"
+                      : "border-[#e6d9b7] bg-[#f6efdc] hover:border-[#c9b884]"
+                  }`}
+                >
+                  {p.tag && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.2 rounded-full bg-[#c8531c] text-white text-[9px] font-bold tracking-wider uppercase whitespace-nowrap">
+                      {p.tag}
+                    </span>
+                  )}
+                  <span className="text-lg font-display font-bold text-[#1b1612] block mt-1">
+                    ₹{p.amount}
+                  </span>
+                  {p.bonus > 0 && (
+                    <span className="text-[11px] text-[#1f5f5b] font-semibold block">
+                      +₹{p.bonus} Free Cash
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Pay Button */}
+        <div className="mt-6 pt-4 border-t border-[#e6d9b7]">
+          <button
+            id="btn-confirm-recharge"
+            type="button"
+            onClick={handlePay}
+            className="btn-saffron w-full py-3 text-sm flex items-center justify-center gap-2"
+          >
+            <Sparkles size={16} />
+            Recharge ₹{selectedPack} Now
+          </button>
+          <p className="text-[11px] text-[#a89a7d] text-center mt-2">
+            Instant credit to your balance. Unused balance never expires.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Astrotalk",
+  "description": "Call or chat with verified astrology counsellors in minutes with real-time consultation, Kundli birth charts, and daily horoscopes.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
