@@ -62,6 +62,7 @@ export default function AiChatClient({
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [speechActiveId, setSpeechActiveId] = useState<string | null>(null);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [expandedTraceId, setExpandedTraceId] = useState<string | null>(null);
@@ -69,7 +70,9 @@ export default function AiChatClient({
   const [whyModalData, setWhyModalData] = useState<WhyThisConclusionData | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -105,73 +108,155 @@ export default function AiChatClient({
     return () => clearInterval(timer);
   }, [counsellor.pricePerMin, onDeductBalance]);
 
-  // Speech Recognition for voice typing
-  useEffect(() => {
+  // Sarvam STT Voice Input with Browser SpeechRecognition fallback
+  const toggleVoiceInput = async () => {
+    if (isListening) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunksRef.current = [];
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        recorder.onstop = async () => {
+          stream.getTracks().forEach((t) => t.stop());
+          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          setIsTranscribing(true);
+
+          try {
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "voice_input.webm");
+
+            const sttRes = await fetch("/api/stt", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (sttRes.ok) {
+              const sttData = await sttRes.json();
+              if (sttData.transcript) {
+                setInput((prev) => (prev ? `${prev} ${sttData.transcript}` : sttData.transcript));
+              }
+            }
+          } catch (err) {
+            console.error("Sarvam STT failed, trying fallback:", err);
+          } finally {
+            setIsTranscribing(false);
+          }
+        };
+
+        recorder.start();
+        setIsListening(true);
+        return;
+      }
+    } catch {
+      // If mic permission denied or unsupported, fallback to Web Speech API
+    }
+
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
       recognition.lang = "hi-IN";
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      recognition.onresult = (e: any) => {
+        const text = e.results[0][0].transcript;
+        setInput((prev) => (prev ? `${prev} ${text}` : text));
         setIsListening(false);
       };
-
       recognition.onerror = () => setIsListening(false);
       recognition.onend = () => setIsListening(false);
-      recognitionRef.current = recognition;
-    }
-  }, []);
-
-  const toggleVoiceInput = () => {
-    if (!recognitionRef.current) {
-      alert("Voice input is not supported in this browser. You can type your question directly.");
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
+      recognition.start();
+      setIsListening(true);
     } else {
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (err) {
-        setIsListening(false);
-      }
+      alert("Voice input could not be accessed. You can type your question directly.");
     }
   };
 
-  const togglePlayAudio = (messageId: string, text: string) => {
-    if (!("speechSynthesis" in window)) return;
-
+  // Sarvam TTS Audio Playback with Browser SpeechSynthesis fallback
+  const togglePlayAudio = async (messageId: string, text: string) => {
+    // If currently playing this message, stop it
     if (speechActiveId === messageId) {
-      window.speechSynthesis.cancel();
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      window.speechSynthesis?.cancel();
       setSpeechActiveId(null);
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.92;
-    utterance.pitch = counsellor.name.includes("Pt.") || counsellor.name.includes("Acharya") ? 0.9 : 1.05;
-
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(
-      (v) => v.lang.includes("en-IN") || v.lang.includes("hi-IN") || v.name.includes("India")
-    );
-    if (preferredVoice) utterance.voice = preferredVoice;
-
-    utterance.onend = () => setSpeechActiveId(null);
-    utterance.onerror = () => setSpeechActiveId(null);
-
+    // Stop any existing playback
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    window.speechSynthesis?.cancel();
     setSpeechActiveId(messageId);
-    window.speechSynthesis.speak(utterance);
+
+    const speakerVoice = counsellor.gender === "female" ? "meera" : "arvind";
+
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          speaker: speakerVoice,
+          languageCode: "hi-IN",
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.audioBase64) {
+          const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
+          currentAudioRef.current = audio;
+          audio.onended = () => {
+            setSpeechActiveId(null);
+            currentAudioRef.current = null;
+          };
+          audio.onerror = () => {
+            setSpeechActiveId(null);
+            currentAudioRef.current = null;
+          };
+          await audio.play();
+          return;
+        }
+      }
+    } catch {
+      // Fall through to browser SpeechSynthesis
+    }
+
+    if ("speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.92;
+      utterance.pitch = counsellor.name.includes("Pt.") || counsellor.name.includes("Acharya") ? 0.9 : 1.05;
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(
+        (v) => v.lang.includes("en-IN") || v.lang.includes("hi-IN") || v.name.includes("India")
+      );
+      if (preferredVoice) utterance.voice = preferredVoice;
+
+      utterance.onend = () => setSpeechActiveId(null);
+      utterance.onerror = () => setSpeechActiveId(null);
+      window.speechSynthesis.speak(utterance);
+    } else {
+      setSpeechActiveId(null);
+    }
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -213,6 +298,7 @@ export default function AiChatClient({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              userId: userProfile.id || "default_user",
               messages: payloadMessages,
               counsellor: {
                 slug: counsellor.slug,
@@ -544,6 +630,13 @@ export default function AiChatClient({
           <div className="flex items-center gap-2 text-xs text-[#786a55] italic bg-[#fbf6e8] border border-[#e6d9b7] p-2.5 px-4 rounded-xl w-fit shadow-xs animate-pulse">
             <Sparkles size={14} className="text-[#c8531c] animate-spin" />
             <span>AI Orchestrator: Shastra matching & deterministic engine checking...</span>
+          </div>
+        )}
+
+        {isTranscribing && (
+          <div className="flex items-center gap-2 text-xs text-[#c8531c] font-semibold bg-[#fae6cf] border border-[#f3a76d] p-2.5 px-4 rounded-xl w-fit shadow-xs animate-pulse">
+            <Mic size={14} className="animate-spin" />
+            <span>Transcribing Hindi/English speech via Sarvam AI saaras:v2...</span>
           </div>
         )}
 

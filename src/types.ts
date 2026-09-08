@@ -31,9 +31,11 @@ export type Counsellor = {
   hometown: string;
   region: "North India" | "South India" | "East India" | "West India" | "Central India" | "Diaspora";
   personaPrompt: string;
+  gender?: "male" | "female";
 };
 
 export type UserProfile = {
+  id?: string;
   displayName: string;
   gender: "male" | "female" | "other" | null;
   birthDate: string; // YYYY-MM-DD

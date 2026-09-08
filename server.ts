@@ -2,8 +2,25 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import multer from "multer";
 import { GoogleGenAI } from "@google/genai";
 import { calculateVedicChartV1, runGoldenTestSuite } from "./src/lib/vedicEngine/calculationEngine";
+import { connectToDatabase, isDatabaseConnected } from "./src/lib/db/connect";
+import {
+  UserModel,
+  KundliRecordModel,
+  TransactionModel,
+  ChatMessageModel,
+  CallSessionModel,
+  memoryFallbackStore,
+} from "./src/lib/db/models";
+import { SarvamAIService } from "./src/lib/sarvam";
+import {
+  createRazorpayOrder,
+  verifyRazorpaySignature,
+  verifyWebhookSignature,
+  RECHARGE_PACKS,
+} from "./src/lib/razorpay";
 
 dotenv.config();
 
@@ -11,6 +28,11 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
+});
 
 let aiClient: GoogleGenAI | null = null;
 function getAIClient(): GoogleGenAI | null {
@@ -90,40 +112,77 @@ Guidelines:
 5. Never be fatalistic or fearful; Vedic Jyotish is a lamp of hope.
 6. Do NOT output markdown tables, raw JSON, or robotic lists. Sound like a live, caring master on call/chat.`;
 
-    const ai = getAIClient();
-    if (!ai) {
-      // Offline fallback grounded in matched evidence
-      const clientName = profile?.displayName ? profile.displayName.split(" ")[0] : "ji";
-      const topRule = matchedRules?.[0];
-      const evidenceQuote = topRule ? ` शास्त्रीय ग्रंथ ${topRule.sourceText} के अनुसार ग्रह स्थिति शुभ फल देने में समर्थ है।` : "";
-      const fallbackText = `नमस्ते ${clientName}! ${signature} आपके प्रश्न पर गणना अनुसार विचार किया।${evidenceQuote} धैर्य बनाए रखें, आने वाले समय में अनुकूलता बढ़ेगी। प्रतिदिन सूर्य को जल अर्घ्य दें।`;
-      return res.json({
-        text: fallbackText,
-        model: "sarvam-vernacular-offline",
-        provider: "Sarvam Synthesizer",
-      });
+    let replyText = "";
+    let provider = "Deterministic Engine";
+    let modelName = "gemini-3.8-flash";
+
+    // 1. Try Sarvam Vernacular LLM first if API key is provided
+    const sarvamResult = await SarvamAIService.chatCompletion([
+      { role: "system", content: systemInstruction },
+      ...messages.slice(-6).map((m: any) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        content: m.content,
+      })),
+    ]);
+
+    if (sarvamResult) {
+      replyText = sarvamResult.content;
+      provider = sarvamResult.provider;
+      modelName = "sarvam-2b";
+    } else {
+      const ai = getAIClient();
+      if (!ai) {
+        // Offline fallback grounded in matched evidence
+        const clientName = profile?.displayName ? profile.displayName.split(" ")[0] : "ji";
+        const topRule = matchedRules?.[0];
+        const evidenceQuote = topRule ? ` शास्त्रीय ग्रंथ ${topRule.sourceText} के अनुसार ग्रह स्थिति शुभ फल देने में समर्थ है।` : "";
+        replyText = `नमस्ते ${clientName}! ${signature} आपके प्रश्न पर गणना अनुसार विचार किया।${evidenceQuote} धैर्य बनाए रखें, आने वाले समय में अनुकूलता बढ़ेगी। प्रतिदिन सूर्य को जल अर्घ्य दें।`;
+        provider = "Sarvam Synthesizer";
+        modelName = "sarvam-vernacular-offline";
+      } else {
+        const contents = messages.slice(-8).map((m: { role: string; content: string }) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content.slice(0, 1200) }],
+        }));
+
+        const response = await ai.models.generateContent({
+          model: "gemini-3.8-flash",
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.72,
+            maxOutputTokens: 350,
+          },
+        });
+
+        replyText = response.text?.trim() || "Namaste. Graha aapke paksh mein hain, kripya apna prashna punah poochein.";
+        provider = "Gemini Deep Reasoning";
+        modelName = "gemini-3.8-flash";
+      }
     }
 
-    const contents = messages.slice(-8).map((m: { role: string; content: string }) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content.slice(0, 1200) }],
-    }));
+    // Asynchronously record message in database
+    try {
+      const userId = req.body.userId || "default_user";
+      if (isDatabaseConnected()) {
+        await ChatMessageModel.create({
+          userId,
+          counsellorSlug: counsellor?.id || "acharya",
+          role: "assistant",
+          content: replyText,
+          provider,
+          tokensUsed: 120,
+          creditsCharged: 5,
+        });
+      }
+    } catch (saveErr: any) {
+      console.warn("[MongoDB] Chat logging notice:", saveErr.message);
+    }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents,
-      config: {
-        systemInstruction,
-        temperature: 0.72,
-        maxOutputTokens: 350,
-      },
-    });
-
-    const replyText = response.text?.trim() || "Namaste. Graha aapke paksh mein hain, kripya apna prashna punah poochein.";
     return res.json({
       text: replyText,
-      model: "gemini-3.8-flash",
-      provider: "Gemini Deep Reasoning",
+      model: modelName,
+      provider,
     });
   } catch (error: any) {
     console.error("Chat API error:", error);
@@ -168,7 +227,7 @@ function parseTimeString(timeStr?: string): { hour: number; minute: number } {
 }
 
 // Canonical Vedic Calculation API (Audit-Verified V1.0.0 Engine)
-app.post("/api/kundli", (req, res) => {
+app.post("/api/kundli", async (req, res) => {
   const { name, dob, tob, pob } = req.body;
   if (!name || !dob) {
     return res.status(400).json({ error: "Name and Date of Birth required" });
@@ -233,6 +292,23 @@ app.post("/api/kundli", (req, res) => {
       significations: h.significations,
     }));
 
+    // Non-blocking persistence to database
+    try {
+      if (isDatabaseConnected()) {
+        await KundliRecordModel.create({
+          userId: req.body.userId || "default_user",
+          name,
+          dob,
+          tob: tob || "12:00 PM",
+          pob: pob || "New Delhi, India",
+          chartV1,
+          provenance: chartV1.provenance,
+        });
+      }
+    } catch (saveErr: any) {
+      console.warn("[MongoDB] Non-blocking Kundli persistence notice:", saveErr.message);
+    }
+
     return res.json({
       name,
       dob,
@@ -266,6 +342,349 @@ app.post("/api/kundli", (req, res) => {
   }
 });
 
+// ==========================================
+// Sarvam AI Endpoints (STT & TTS)
+// ==========================================
+
+// Speech-to-Text endpoint (saaras:v2)
+app.post("/api/stt", upload.single("audio"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Audio file upload required ('audio' field)" });
+    }
+
+    const result = await SarvamAIService.speechToText(
+      req.file.buffer,
+      req.file.mimetype || "audio/wav",
+      req.file.originalname || "recording.wav"
+    );
+
+    return res.json({
+      transcript: result.transcript,
+      isFallback: result.isFallback,
+      model: "saaras:v2",
+    });
+  } catch (err: any) {
+    console.error("STT Endpoint error:", err);
+    return res.status(500).json({
+      transcript: "ऑडियो प्रोसेसिंग में समस्या हुई। कृपया दोबारा बोलें।",
+      isFallback: true,
+      error: err.message,
+    });
+  }
+});
+
+// Text-to-Speech endpoint (bulbul:v1)
+app.post("/api/tts", async (req, res) => {
+  try {
+    const { text, speaker = "meera", languageCode = "hi-IN" } = req.body;
+
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "Text string is required" });
+    }
+
+    const result = await SarvamAIService.textToSpeech(text, speaker, languageCode);
+
+    return res.json({
+      audioBase64: result.audioBase64,
+      isFallback: result.isFallback,
+      speaker: result.speaker,
+      model: "bulbul:v1",
+    });
+  } catch (err: any) {
+    console.error("TTS Endpoint error:", err);
+    return res.status(500).json({
+      audioBase64: null,
+      isFallback: true,
+      error: err.message,
+    });
+  }
+});
+
+// ==========================================
+// User Profile & Wallet Balance Endpoints
+// ==========================================
+
+app.get(["/api/user", "/api/user/:userId"], async (req, res) => {
+  try {
+    const userId = req.params.userId || (req.query.userId as string) || "default_user";
+
+    if (isDatabaseConnected()) {
+      let user = await UserModel.findById(userId);
+      if (!user) {
+        user = await UserModel.create({
+          _id: userId,
+          displayName: "Astro Seeker",
+          gender: "male",
+          birthDate: "2005-12-21",
+          birthTime: "11:55 PM",
+          birthPlace: "New Delhi, Delhi, India",
+          walletBalance: 150,
+          aiCredits: 100,
+        });
+      }
+      return res.json({ user, isDatabaseConnected: true });
+    }
+
+    // Fallback store
+    const user = memoryFallbackStore.getUser(userId);
+    return res.json({ user, isDatabaseConnected: false });
+  } catch (err: any) {
+    console.error("User fetch error:", err);
+    const user = memoryFallbackStore.getUser("default_user");
+    return res.json({ user, isDatabaseConnected: false });
+  }
+});
+
+app.post("/api/user", async (req, res) => {
+  try {
+    const { userId = "default_user", ...updates } = req.body;
+
+    if (isDatabaseConnected()) {
+      const user = await UserModel.findByIdAndUpdate(
+        userId,
+        { $set: updates },
+        { new: true, upsert: true }
+      );
+      return res.json({ success: true, user });
+    }
+
+    const user = memoryFallbackStore.getUser(userId);
+    Object.assign(user, updates);
+    return res.json({ success: true, user });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// Razorpay Payment Gateway Endpoints
+// ==========================================
+
+// Get available recharge packages
+app.get("/api/payments/packs", (_req, res) => {
+  res.json({ packs: RECHARGE_PACKS });
+});
+
+// Create Razorpay Order
+app.post("/api/payments/create-order", async (req, res) => {
+  try {
+    const { amount, userId = "default_user", bonus = 0 } = req.body;
+
+    if (!amount || amount < 10) {
+      return res.status(400).json({ error: "Invalid recharge amount" });
+    }
+
+    const orderData = await createRazorpayOrder({
+      amountInRupees: amount,
+      receipt: `rcpt_${Date.now()}_${userId.slice(0, 6)}`,
+      notes: { userId, bonus: String(bonus) },
+    });
+
+    // Record pending transaction
+    if (isDatabaseConnected()) {
+      await TransactionModel.create({
+        userId,
+        razorpayOrderId: orderData.orderId,
+        amount,
+        bonusAmount: bonus,
+        status: "created",
+        currency: orderData.currency,
+      });
+    }
+
+    return res.json(orderData);
+  } catch (err: any) {
+    console.error("Create order error:", err);
+    return res.status(500).json({ error: "Order creation failed", details: err.message });
+  }
+});
+
+// Verify Razorpay Payment Signature
+app.post("/api/payments/verify", async (req, res) => {
+  try {
+    const {
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      userId = "default_user",
+      amount,
+      bonus = 0,
+    } = req.body;
+
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return res.status(400).json({ error: "Missing verification parameters" });
+    }
+
+    const verification = verifyRazorpaySignature({
+      orderId: razorpayOrderId,
+      paymentId: razorpayPaymentId,
+      signature: razorpaySignature,
+    });
+
+    if (!verification.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: "Signature verification failed",
+        reason: verification.reason,
+      });
+    }
+
+    const totalCredit = (Number(amount) || 0) + (Number(bonus) || 0);
+
+    // Update Transaction & Wallet in Database
+    let updatedBalance = 0;
+    if (isDatabaseConnected()) {
+      await TransactionModel.findOneAndUpdate(
+        { razorpayOrderId },
+        {
+          $set: {
+            razorpayPaymentId,
+            razorpaySignature,
+            status: "paid",
+          },
+        },
+        { upsert: true }
+      );
+
+      const user = await UserModel.findByIdAndUpdate(
+        userId,
+        { $inc: { walletBalance: totalCredit } },
+        { new: true, upsert: true }
+      );
+      updatedBalance = user.walletBalance;
+    } else {
+      updatedBalance = memoryFallbackStore.updateWallet(userId, totalCredit);
+    }
+
+    return res.json({
+      success: true,
+      message: `₹${totalCredit} successfully credited to your wallet!`,
+      creditedAmount: totalCredit,
+      newBalance: updatedBalance,
+    });
+  } catch (err: any) {
+    console.error("Verify payment error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Razorpay Asynchronous Webhook
+app.post("/api/payments/webhook", async (req, res) => {
+  const signature = req.headers["x-razorpay-signature"] as string;
+  const isValid = verifyWebhookSignature(JSON.stringify(req.body), signature);
+
+  if (!isValid) {
+    return res.status(400).send("Invalid Webhook Signature");
+  }
+
+  const event = req.body.event;
+  if (event === "payment.captured") {
+    const payment = req.body.payload?.payment?.entity;
+    console.log(`[Razorpay Webhook] Payment captured: ${payment?.id}, Order: ${payment?.order_id}`);
+    if (payment?.order_id && isDatabaseConnected()) {
+      await TransactionModel.findOneAndUpdate(
+        { razorpayOrderId: payment.order_id },
+        { $set: { status: "paid", razorpayPaymentId: payment.id } }
+      );
+    }
+  }
+
+  return res.json({ status: "ok" });
+});
+
+// ==========================================
+// Consultation Call Session & Billing
+// ==========================================
+
+app.post("/api/call/start", async (req, res) => {
+  try {
+    const { userId = "default_user", counsellorSlug = "acharya", ratePerMinute = 25 } = req.body;
+
+    if (isDatabaseConnected()) {
+      const session = await CallSessionModel.create({
+        userId,
+        counsellorSlug,
+        ratePerMinute,
+        startTime: new Date(),
+        status: "active",
+      });
+      return res.json({ sessionId: session._id, status: "active" });
+    }
+
+    const simId = `call_${Date.now()}`;
+    return res.json({ sessionId: simId, status: "active" });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/call/deduct", async (req, res) => {
+  try {
+    const { sessionId, userId = "default_user", ratePerMinute = 25 } = req.body;
+    const perMinuteCost = Number(ratePerMinute) || 25;
+
+    let remainingBalance = 0;
+    if (isDatabaseConnected()) {
+      const user = await UserModel.findById(userId);
+      if (!user || user.walletBalance < perMinuteCost) {
+        return res.json({
+          success: false,
+          insufficientBalance: true,
+          remainingBalance: user?.walletBalance || 0,
+        });
+      }
+
+      user.walletBalance -= perMinuteCost;
+      await user.save();
+      remainingBalance = user.walletBalance;
+
+      if (sessionId) {
+        await CallSessionModel.findByIdAndUpdate(sessionId, {
+          $inc: { durationSeconds: 60, totalDeducted: perMinuteCost },
+        });
+      }
+    } else {
+      const user = memoryFallbackStore.getUser(userId);
+      if (user.walletBalance < perMinuteCost) {
+        return res.json({
+          success: false,
+          insufficientBalance: true,
+          remainingBalance: user.walletBalance,
+        });
+      }
+      user.walletBalance -= perMinuteCost;
+      remainingBalance = user.walletBalance;
+    }
+
+    return res.json({
+      success: true,
+      deducted: perMinuteCost,
+      remainingBalance,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/call/end", async (req, res) => {
+  try {
+    const { sessionId, transcript = [] } = req.body;
+    if (sessionId && isDatabaseConnected()) {
+      await CallSessionModel.findByIdAndUpdate(sessionId, {
+        $set: {
+          endTime: new Date(),
+          status: "completed",
+          transcript,
+        },
+      });
+    }
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Golden Test Verification Endpoint
 app.get("/api/golden-test", (_req, res) => {
   const report = runGoldenTestSuite();
@@ -292,6 +711,9 @@ app.get("/api/panchang", (_req, res) => {
 });
 
 async function startServer() {
+  // Initialize MongoDB connection pool with resilient fallback
+  await connectToDatabase();
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

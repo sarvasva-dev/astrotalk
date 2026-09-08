@@ -9,7 +9,9 @@ import {
   Sparkles,
   Clock,
   Wallet,
-  MessageSquare
+  MessageSquare,
+  Radio,
+  Loader2,
 } from "lucide-react";
 import type { Counsellor, UserProfile } from "../types";
 
@@ -40,57 +42,130 @@ export default function VoiceCallClient({
   const [lastSpokenText, setLastSpokenText] = useState("");
   const [userSpokenText, setUserSpokenText] = useState("");
   const [waveform, setWaveform] = useState<number[]>([12, 24, 18, 32, 14, 28, 40, 22, 16, 30, 20, 15]);
+  const [isListeningMic, setIsListeningMic] = useState(false);
+  const [processingSTT, setProcessingSTT] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
-  const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // Astrologer speech synthesis
-  const speakAstrologerReply = useCallback((text: string) => {
-    if (!("speechSynthesis" in window) || !isSpeaker) return;
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.92;
-    utterance.pitch = counsellor.name.includes("Pt.") || counsellor.name.includes("Acharya") ? 0.9 : 1.05;
-
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(
-      (v) => v.lang.includes("en-IN") || v.lang.includes("hi-IN") || v.name.includes("India")
-    );
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+  // Stop any playing audio
+  const stopAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
     }
+    window.speechSynthesis?.cancel();
+    setAstrologerSpeaking(false);
+  }, []);
 
-    utterance.onstart = () => {
-      setAstrologerSpeaking(true);
-    };
-    utterance.onend = () => {
-      setAstrologerSpeaking(false);
-    };
-    utterance.onerror = () => {
-      setAstrologerSpeaking(false);
-    };
+  // Astrologer speech synthesis using Sarvam TTS (bulbul:v1) with browser fallback
+  const speakAstrologerReply = useCallback(
+    async (text: string) => {
+      if (!isSpeaker) return;
+      stopAudio();
+      setLastSpokenText(text);
 
-    speechRef.current = utterance;
-    setLastSpokenText(text);
-    window.speechSynthesis.speak(utterance);
-  }, [counsellor.name, isSpeaker]);
+      const speakerVoice = counsellor.gender === "female" ? "meera" : "arvind";
 
-  // Connect call simulation
+      try {
+        // 1. Try Sarvam TTS bulbul:v1
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text,
+            speaker: speakerVoice,
+            languageCode: "hi-IN",
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.audioBase64) {
+            const audio = new Audio(`data:audio/wav;base64,${data.audioBase64}`);
+            currentAudioRef.current = audio;
+            audio.onplay = () => setAstrologerSpeaking(true);
+            audio.onended = () => {
+              setAstrologerSpeaking(false);
+              currentAudioRef.current = null;
+            };
+            audio.onerror = () => {
+              setAstrologerSpeaking(false);
+              currentAudioRef.current = null;
+            };
+            await audio.play();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("[TTS] Sarvam audio playback notice, falling back to browser synthesis:", err);
+      }
+
+      // 2. Resilient Browser SpeechSynthesis fallback
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.92;
+        utterance.pitch = counsellor.name.includes("Pt.") || counsellor.name.includes("Acharya") ? 0.9 : 1.05;
+
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(
+          (v) => v.lang.includes("en-IN") || v.lang.includes("hi-IN") || v.name.includes("India")
+        );
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        utterance.onstart = () => setAstrologerSpeaking(true);
+        utterance.onend = () => setAstrologerSpeaking(false);
+        utterance.onerror = () => setAstrologerSpeaking(false);
+
+        speechRef.current = utterance;
+        window.speechSynthesis.speak(utterance);
+      }
+    },
+    [counsellor.gender, counsellor.name, isSpeaker, stopAudio]
+  );
+
+  // Initialize call session & connect
   useEffect(() => {
+    let isMounted = true;
+
+    // Start server-side session recording
+    fetch("/api/call/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: userProfile.id || "default_user",
+        counsellorSlug: counsellor.slug,
+        ratePerMinute: counsellor.pricePerMin,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (isMounted && data.sessionId) {
+          setSessionId(data.sessionId);
+        }
+      })
+      .catch(() => {});
+
     const connectTimer = setTimeout(() => {
+      if (!isMounted) return;
       setCallStatus("connected");
       const greeting = `Namaste ${userProfile.displayName ? userProfile.displayName.split(" ")[0] : "ji"}! Main ${counsellor.name} bol raha hoon. ${counsellor.signature} Batayein, aaj kis vishay par charcha karni hai?`;
       speakAstrologerReply(greeting);
-    }, 2000);
+    }, 1600);
 
     return () => {
+      isMounted = false;
       clearTimeout(connectTimer);
-      window.speechSynthesis?.cancel();
+      stopAudio();
     };
-  }, [counsellor.name, counsellor.signature, userProfile.displayName, speakAstrologerReply]);
+  }, [counsellor.name, counsellor.signature, counsellor.slug, counsellor.pricePerMin, userProfile.displayName, userProfile.id, speakAstrologerReply, stopAudio]);
 
-  // Call timer and billing
+  // Call timer and billing interval
   useEffect(() => {
     if (callStatus !== "connected") return;
 
@@ -98,12 +173,23 @@ export default function VoiceCallClient({
       setDuration((prev) => {
         const next = prev + 1;
         if (next > 0 && next % 60 === 0) {
+          // Deduct local and server balance
           const success = onDeductBalance(counsellor.pricePerMin);
+          fetch("/api/call/deduct", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId,
+              userId: userProfile.id || "default_user",
+              ratePerMinute: counsellor.pricePerMin,
+            }),
+          }).catch(() => {});
+
           if (!success) {
-            speakAstrologerReply("Aapka balance khatam ho gaya hai. Shubh aashirwad.");
+            speakAstrologerReply("Aapka balance samapt ho gaya hai. Kripya wallet recharge karein. Shubh aashirwad.");
             setTimeout(() => {
               onEndCall();
-            }, 3000);
+            }, 3500);
           }
         }
         return next;
@@ -111,7 +197,7 @@ export default function VoiceCallClient({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [callStatus, counsellor.pricePerMin, onDeductBalance, onEndCall, speakAstrologerReply]);
+  }, [callStatus, counsellor.pricePerMin, onDeductBalance, onEndCall, sessionId, userProfile.id, speakAstrologerReply]);
 
   // Dynamic waveform animation
   useEffect(() => {
@@ -126,16 +212,17 @@ export default function VoiceCallClient({
     return () => clearInterval(waveInterval);
   }, [astrologerSpeaking]);
 
-  // Handle user asking question during call
+  // Handle consultation question
   const handleUserConsult = async (queryText: string) => {
     setUserSpokenText(queryText);
-    setAstrologerSpeaking(false);
+    stopAudio();
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: userProfile.id || "default_user",
           messages: [{ role: "user", content: queryText }],
           counsellor: {
             slug: counsellor.slug,
@@ -154,9 +241,86 @@ export default function VoiceCallClient({
       const data = await res.json();
       const reply = data.text || "Namaste. Graha aapke paksh mein hain, kripya apna prashna punah poochein.";
       speakAstrologerReply(reply);
-    } catch (err) {
+    } catch {
       speakAstrologerReply("Sampark mein thoda avrodh hai, kripya dobara poochein.");
     }
+  };
+
+  // Sarvam STT Microphone Handler
+  const toggleMicRecording = async () => {
+    if (isListeningMic) {
+      // Stop recording and send audio to Sarvam STT
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      setIsListeningMic(false);
+    } else {
+      // Start recording
+      try {
+        stopAudio();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunksRef.current = [];
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach((track) => track.stop());
+          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          setProcessingSTT(true);
+
+          try {
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "user_voice.webm");
+
+            const sttRes = await fetch("/api/stt", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (sttRes.ok) {
+              const sttData = await sttRes.json();
+              if (sttData.transcript) {
+                handleUserConsult(sttData.transcript);
+              }
+            }
+          } catch (err) {
+            console.error("STT transcription failed:", err);
+          } finally {
+            setProcessingSTT(false);
+          }
+        };
+
+        mediaRecorder.start();
+        setIsListeningMic(true);
+      } catch (micErr) {
+        console.warn("Microphone access unavailable or denied:", micErr);
+        setIsListeningMic(false);
+      }
+    }
+  };
+
+  const handleHangup = () => {
+    stopAudio();
+    if (sessionId) {
+      fetch("/api/call/end", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          transcript: [
+            { speaker: "astrologer", text: lastSpokenText, timestamp: new Date() },
+            ...(userSpokenText ? [{ speaker: "user", text: userSpokenText, timestamp: new Date() }] : []),
+          ],
+        }),
+      }).catch(() => {});
+    }
+    onEndCall();
   };
 
   const formatTimer = (seconds: number) => {
@@ -182,7 +346,7 @@ export default function VoiceCallClient({
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-[#1f5f5b] animate-pulse" />
           <span className="text-xs tracking-wider uppercase font-mono text-[#d9cda7]">
-            {callStatus === "connecting" ? "Establishing line..." : "Astrotalk Voice HD"}
+            {callStatus === "connecting" ? "Connecting to Sarvam Audio..." : "Astrotalk Voice HD • Sarvam AI"}
           </span>
         </div>
 
@@ -271,8 +435,14 @@ export default function VoiceCallClient({
           </div>
         )}
 
-        {/* User spoken transcript */}
-        {userSpokenText && (
+        {/* User spoken transcript or STT status */}
+        {processingSTT && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-[#f3a76d]">
+            <Loader2 size={13} className="animate-spin" />
+            <span>Sarvam saaras:v2 processing your speech...</span>
+          </div>
+        )}
+        {userSpokenText && !processingSTT && (
           <div className="mt-2 text-xs text-[#a89a7d]">
             You asked: &ldquo;{userSpokenText}&rdquo;
           </div>
@@ -295,29 +465,34 @@ export default function VoiceCallClient({
 
       {/* Call Controls Footer */}
       <footer className="flex items-center justify-center gap-6 sm:gap-8 pb-4">
-        {/* Mute Button */}
+        {/* Sarvam STT Mic Push-to-Talk / Toggle */}
         <button
-          id="btn-call-mute"
+          id="btn-call-record-mic"
           type="button"
-          onClick={() => setIsMuted(!isMuted)}
-          className={`p-4 rounded-full transition-all cursor-pointer ${
-            isMuted
+          onClick={toggleMicRecording}
+          className={`p-4 rounded-full transition-all cursor-pointer flex items-center justify-center relative ${
+            isListeningMic
+              ? "bg-[#c8531c] text-white ring-4 ring-[#c8531c]/50 animate-pulse"
+              : isMuted
               ? "bg-[#a8231a] text-white"
               : "bg-white/10 hover:bg-white/20 text-[#f6efdc]"
           }`}
-          title={isMuted ? "Unmute Mic" : "Mute Mic"}
+          title={isListeningMic ? "Click to Transcribe Speech (Sarvam STT)" : "Click & Speak Question"}
         >
-          {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
+          {isListeningMic ? (
+            <Radio size={22} className="text-white animate-spin" />
+          ) : isMuted ? (
+            <MicOff size={22} />
+          ) : (
+            <Mic size={22} />
+          )}
         </button>
 
         {/* End Call Button */}
         <button
           id="btn-call-hangup"
           type="button"
-          onClick={() => {
-            window.speechSynthesis?.cancel();
-            onEndCall();
-          }}
+          onClick={handleHangup}
           className="p-5 rounded-full bg-[#a8231a] hover:bg-[#851810] text-white shadow-xl shadow-red-900/40 transition-transform active:scale-95 cursor-pointer"
           title="End Call"
         >
@@ -330,7 +505,7 @@ export default function VoiceCallClient({
           type="button"
           onClick={() => {
             if (isSpeaker) {
-              window.speechSynthesis?.cancel();
+              stopAudio();
             }
             setIsSpeaker(!isSpeaker);
           }}

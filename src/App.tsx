@@ -230,6 +230,7 @@ export default function App() {
         {isWalletOpen && (
           <WalletModal
             balance={walletBalance}
+            userId={userProfile.id || "default_user"}
             onClose={() => setIsWalletOpen(false)}
             onRecharge={handleRecharge}
           />
@@ -472,6 +473,7 @@ export default function App() {
       {isWalletOpen && (
         <WalletModal
           balance={walletBalance}
+          userId={userProfile.id || "default_user"}
           onClose={() => setIsWalletOpen(false)}
           onRecharge={handleRecharge}
         />
