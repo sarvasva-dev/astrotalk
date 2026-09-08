@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
+import { calculateVedicChartV1, runGoldenTestSuite } from "./src/lib/vedicEngine/calculationEngine";
 
 dotenv.config();
 
@@ -134,89 +135,141 @@ Guidelines:
 });
 
 
-// Kundli generation endpoint (calculates astrological details)
+// City coordinates database for India & major locations
+const CITY_COORDINATES: Record<string, { lat: number; lon: number }> = {
+  delhi: { lat: 28.6139, lon: 77.2090 },
+  "new delhi": { lat: 28.6139, lon: 77.2090 },
+  mumbai: { lat: 19.0760, lon: 72.8777 },
+  bengaluru: { lat: 12.9716, lon: 77.5946 },
+  bangalore: { lat: 12.9716, lon: 77.5946 },
+  varanasi: { lat: 25.3176, lon: 82.9739 },
+  kolkata: { lat: 22.5726, lon: 88.3639 },
+  chennai: { lat: 13.0827, lon: 80.2707 },
+  hyderabad: { lat: 17.3850, lon: 78.4867 },
+  pune: { lat: 18.5204, lon: 73.8567 },
+  ahmedabad: { lat: 23.0225, lon: 72.5714 },
+  jaipur: { lat: 26.9124, lon: 75.7873 },
+  lucknow: { lat: 26.8467, lon: 80.9462 },
+  kanpur: { lat: 26.4499, lon: 80.3319 },
+  patna: { lat: 25.5941, lon: 85.1376 },
+};
+
+function parseTimeString(timeStr?: string): { hour: number; minute: number } {
+  if (!timeStr) return { hour: 12, minute: 0 };
+  const clean = timeStr.trim().toLowerCase();
+  const isPM = clean.includes("pm");
+  const isAM = clean.includes("am");
+  const numbers = clean.replace(/[^0-9:]/g, "").split(":");
+  let hour = parseInt(numbers[0] || "12", 10);
+  const minute = parseInt(numbers[1] || "0", 10);
+  if (isPM && hour < 12) hour += 12;
+  if (isAM && hour === 12) hour = 0;
+  return { hour, minute };
+}
+
+// Canonical Vedic Calculation API (Audit-Verified V1.0.0 Engine)
 app.post("/api/kundli", (req, res) => {
   const { name, dob, tob, pob } = req.body;
   if (!name || !dob) {
     return res.status(400).json({ error: "Name and Date of Birth required" });
   }
 
-  // Astrological calculation algorithm based on birth date seed
-  const birthDate = new Date(dob);
-  const day = birthDate.getDate() || 15;
-  const month = birthDate.getMonth() + 1;
-  const year = birthDate.getFullYear() || 1998;
+  try {
+    const birthDate = new Date(dob);
+    const day = birthDate.getDate() || 15;
+    const month = birthDate.getMonth() + 1;
+    const year = birthDate.getFullYear() || 1998;
+    const { hour, minute } = parseTimeString(tob);
 
-  const rashis = [
-    { sign: "Mesha (Aries)", lord: "Mangal (Mars)", element: "Fire" },
-    { sign: "Vrishabha (Taurus)", lord: "Shukra (Venus)", element: "Earth" },
-    { sign: "Mithuna (Gemini)", lord: "Budh (Mercury)", element: "Air" },
-    { sign: "Karka (Cancer)", lord: "Chandra (Moon)", element: "Water" },
-    { sign: "Simha (Leo)", lord: "Surya (Sun)", element: "Fire" },
-    { sign: "Kanya (Virgo)", lord: "Budh (Mercury)", element: "Earth" },
-    { sign: "Tula (Libra)", lord: "Shukra (Venus)", element: "Air" },
-    { sign: "Vrischika (Scorpio)", lord: "Mangal (Mars)", element: "Water" },
-    { sign: "Dhanu (Sagittarius)", lord: "Guru (Jupiter)", element: "Fire" },
-    { sign: "Makara (Capricorn)", lord: "Shani (Saturn)", element: "Earth" },
-    { sign: "Kumbha (Aquarius)", lord: "Shani (Saturn)", element: "Air" },
-    { sign: "Meena (Pisces)", lord: "Guru (Jupiter)", element: "Water" },
-  ];
-
-  const nakshatras = [
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
-    "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
-    "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta",
-    "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"
-  ];
-
-  const seed = (day * 31 + month * 12 + year) % 12;
-  const moonSeed = (day * 7 + month * 13 + (year % 100)) % 12;
-  const nakshatraSeed = (day * 17 + month * 23 + (year % 100)) % 27;
-
-  const lagna = rashis[seed];
-  const moonSign = rashis[moonSeed];
-  const nakshatra = nakshatras[nakshatraSeed];
-  const isManglik = (day + month) % 3 === 0;
-  const dashaLords = ["Jupiter (Guru)", "Saturn (Shani)", "Mercury (Budh)", "Ketu", "Venus (Shukra)", "Sun (Surya)", "Moon (Chandra)", "Mars (Mangal)", "Rahu"];
-  const currentDasha = dashaLords[(year + month) % dashaLords.length];
-
-  // 12 Houses map with planetary placements
-  const planets = ["Surya", "Chandra", "Mangal", "Budh", "Guru", "Shukra", "Shani", "Rahu", "Ketu"];
-  const houses = Array.from({ length: 12 }, (_, i) => {
-    const houseNum = i + 1;
-    const housePlanets: string[] = [];
-    planets.forEach((p, pIdx) => {
-      if ((pIdx * 3 + seed + day) % 12 === i) {
-        housePlanets.push(p);
-      }
-    });
-    return {
-      house: houseNum,
-      sign: rashis[(seed + i) % 12].sign.split(" ")[0],
-      signLord: rashis[(seed + i) % 12].lord,
-      planets: housePlanets,
+    // Resolve geographic coordinates
+    const cityKey = (pob || "Delhi").toLowerCase().trim();
+    const matchedCoords = Object.entries(CITY_COORDINATES).find(([k]) => cityKey.includes(k))?.[1] || {
+      lat: 28.6139,
+      lon: 77.2090,
     };
-  });
 
-  res.json({
-    name,
-    dob,
-    tob: tob || "12:00 PM",
-    pob: pob || "New Delhi, India",
-    lagna: lagna.sign,
-    lagnaLord: lagna.lord,
-    element: lagna.element,
-    moonSign: moonSign.sign,
-    nakshatra,
-    isManglik,
-    currentDasha,
-    luckyGemstone: lagna.element === "Fire" ? "Ruby (Manikya) / Yellow Sapphire (Pukhraj)" : lagna.element === "Earth" ? "Emerald (Panna) / Blue Sapphire" : lagna.element === "Air" ? "Diamond / Opal" : "Pearl (Moti) / Red Coral",
-    luckyNumber: ((day + month) % 9) + 1,
-    luckyColor: lagna.element === "Fire" ? "Saffron & Crimson" : lagna.element === "Earth" ? "Emerald Green" : lagna.element === "Air" ? "Sky Blue & Silver" : "Pure White & Pearl",
-    houses,
-    summary: `${name}'s Lagna is ${lagna.sign} governed by ${lagna.lord}. Chandra is placed in ${moonSign.sign} in ${nakshatra} Nakshatra. Currently running ${currentDasha} Mahadasha, bringing opportunities for progression with careful focus.`,
-  });
+    const chartV1 = calculateVedicChartV1({
+      name,
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      latitude: matchedCoords.lat,
+      longitude: matchedCoords.lon,
+      timezoneOffsetHours: 5.5, // Indian Standard Time default
+      cityName: pob || "New Delhi, India",
+    });
+
+    const moon = chartV1.planets.find((p) => p.name === "Moon")!;
+
+    // Legacy and UI formatted fields
+    const luckyGemstone =
+      chartV1.lagna.element === "Fire"
+        ? "Ruby (Manikya) / Yellow Sapphire (Pukhraj)"
+        : chartV1.lagna.element === "Earth"
+        ? "Emerald (Panna) / Blue Sapphire"
+        : chartV1.lagna.element === "Air"
+        ? "Diamond / Opal"
+        : "Pearl (Moti) / Red Coral";
+
+    const luckyColor =
+      chartV1.lagna.element === "Fire"
+        ? "Saffron & Crimson"
+        : chartV1.lagna.element === "Earth"
+        ? "Emerald Green & Earthy Ochre"
+        : chartV1.lagna.element === "Air"
+        ? "Sky Blue & Silver"
+        : "Pure White & Pearl";
+
+    const luckyNumber = ((day + month) % 9) + 1;
+
+    const formattedHouses = chartV1.houses.map((h) => ({
+      house: h.house,
+      sign: h.sign,
+      signLord: h.signLord,
+      planets: h.occupantPlanets.map((p) => p.split(" ")[0]),
+      aspectedBy: h.aspectedByPlanets.map((p) => p.split(" ")[0]),
+      significations: h.significations,
+    }));
+
+    return res.json({
+      name,
+      dob,
+      tob: tob || "12:00 PM",
+      pob: pob || "New Delhi, India",
+      lagna: `${chartV1.lagna.rashi} (${chartV1.lagna.formattedDegree})`,
+      lagnaLord: chartV1.lagna.rashiLord,
+      element: chartV1.lagna.element,
+      moonSign: `${moon.rashi} (${moon.formattedDegree})`,
+      nakshatra: moon.nakshatra,
+      nakshatraPada: moon.pada,
+      nakshatraLord: moon.nakshatraLord,
+      isManglik: chartV1.manglikStatus.isManglik,
+      currentDasha: `${chartV1.dasha.currentMahadasha} Mahadasha`,
+      currentAntardasha: chartV1.dasha.currentAntardasha,
+      currentPratyantardasha: chartV1.dasha.currentPratyantardasha,
+      luckyGemstone,
+      luckyNumber,
+      luckyColor,
+      houses: formattedHouses,
+      summary: chartV1.summary,
+      chartV1,
+      planetsDetailed: chartV1.planets,
+      lagnaDetailed: chartV1.lagna,
+      dashaTree: chartV1.dasha,
+      provenance: chartV1.provenance,
+    });
+  } catch (error: any) {
+    console.error("Vedic calculation engine error:", error);
+    return res.status(500).json({ error: "Calculation failure", details: error.message });
+  }
+});
+
+// Golden Test Verification Endpoint
+app.get("/api/golden-test", (_req, res) => {
+  const report = runGoldenTestSuite();
+  res.json(report);
 });
 
 // Daily Panchang endpoint

@@ -1,3 +1,11 @@
+import type {
+  CalculatedChartV1,
+  PlanetPosition,
+  LagnaPosition,
+  VimshottariDashaTree,
+  ProvenanceRecord,
+} from "./lib/vedicEngine/calculationEngine";
+
 export type CategorySlug = "marriage" | "health" | "wealth" | "legal" | "finance" | "career";
 
 export type FilterMode = "all" | "celebrity" | "new";
@@ -39,6 +47,40 @@ export type KundliHouse = {
   sign: string;
   signLord: string;
   planets: string[];
+  aspectedBy?: string[];
+  significations?: string;
+};
+
+export type WhyThisConclusionData = {
+  claim: string;
+  category: "planet_rashi" | "nakshatra_pada" | "lagna" | "dasha" | "graha_drishti" | "manglik" | "remedy" | "ai_synthesis";
+  astronomicalCalculation: {
+    rawTropicalDeg?: string;
+    ayanamsaName: string;
+    ayanamsaValue: string;
+    trueSiderealDeg: string;
+    signRange?: string;
+    nakshatraSpan?: string;
+    padaSpan?: string;
+    formula?: string;
+    stepExplanation?: string;
+  };
+  provenance: {
+    engine: string;
+    engineVersion: string;
+    julianDate: number;
+    utcTimestamp: string;
+    coordinates: string;
+    auditStatus?: string;
+  };
+  classicalShastra: {
+    sourceBook: string;
+    chapter: string;
+    verse: string;
+    sanskritSloka: string;
+    englishPurport: string;
+    evidenceType: "CLASSICAL_RULE" | "MATHEMATICAL_AXIOM" | "SYNTHESIZED_PARASHARI";
+  };
 };
 
 export type KundliData = {
@@ -51,13 +93,22 @@ export type KundliData = {
   element: string;
   moonSign: string;
   nakshatra: string;
+  nakshatraPada?: number;
+  nakshatraLord?: string;
   isManglik: boolean;
   currentDasha: string;
+  currentAntardasha?: string;
+  currentPratyantardasha?: string;
   luckyGemstone: string;
   luckyNumber: number;
   luckyColor: string;
   houses: KundliHouse[];
   summary: string;
+  chartV1?: CalculatedChartV1;
+  planetsDetailed?: PlanetPosition[];
+  lagnaDetailed?: LagnaPosition;
+  dashaTree?: VimshottariDashaTree;
+  provenance?: ProvenanceRecord;
 };
 
 export type ChatMessage = {

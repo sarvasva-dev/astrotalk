@@ -18,11 +18,14 @@ import {
   ChevronUp,
   Layers,
   CheckCircle2,
-  Coins
+  Coins,
+  Calculator
 } from "lucide-react";
-import type { Counsellor, UserProfile, ChatMessage, KundliData, OrchestratorTrace } from "../types";
+import type { Counsellor, UserProfile, ChatMessage, KundliData, OrchestratorTrace, WhyThisConclusionData } from "../types";
 import { executeOrchestratorPipeline } from "../lib/orchestrator/orchestrator";
 import { AICreditManager } from "../lib/orchestrator/creditManager";
+import WhyThisConclusionModal from "./WhyThisConclusionModal";
+import { generateRuleConclusion } from "../lib/vedicEngine/whyThisConclusionHelper";
 
 interface AiChatClientProps {
   counsellor: Counsellor;
@@ -63,6 +66,7 @@ export default function AiChatClient({
   const [sessionDuration, setSessionDuration] = useState(0);
   const [expandedTraceId, setExpandedTraceId] = useState<string | null>(null);
   const [creditProfile, setCreditProfile] = useState(AICreditManager.getProfile);
+  const [whyModalData, setWhyModalData] = useState<WhyThisConclusionData | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -500,6 +504,17 @@ export default function AiChatClient({
                             <div className="text-[10px] text-[#786a55]">
                               {rule.purport}
                             </div>
+                            <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-[#d9cda7]/50">
+                              <button
+                                type="button"
+                                onClick={() => setWhyModalData(generateRuleConclusion(rule, kundli))}
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-[#1f5f5b] hover:text-[#184d4a] cursor-pointer"
+                              >
+                                <Calculator size={11} />
+                                <span>प्रमाण व गणना (Show Me Why)</span>
+                              </button>
+                              <span className="text-[9px] text-[#a89a7d] font-mono">Verified Shastra</span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -599,6 +614,12 @@ export default function AiChatClient({
           </button>
         </div>
       </footer>
+
+      {/* Why This Conclusion & Shastric Evidence Modal */}
+      <WhyThisConclusionModal
+        data={whyModalData}
+        onClose={() => setWhyModalData(null)}
+      />
     </div>
   );
 }

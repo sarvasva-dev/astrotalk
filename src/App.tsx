@@ -170,6 +170,23 @@ export default function App() {
     });
   }, [selectedCategory, filterMode, searchQuery]);
 
+  const handleLoadGoldenFixture = () => {
+    const goldenProfile: UserProfile = {
+      displayName: "Golden Fixture Native",
+      gender: "male",
+      birthDate: "2005-12-21",
+      birthTime: "23:55",
+      birthTimeUnknown: false,
+      birthPlace: "Delhi, India",
+    };
+    setUserProfile(goldenProfile);
+    try {
+      localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(goldenProfile));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   // Active Live Voice Call View
   if (activeCallCounsellor) {
     return (
@@ -423,6 +440,7 @@ export default function App() {
             onConsultChart={() => {
               setActiveTab("consult");
             }}
+            onLoadGoldenFixture={handleLoadGoldenFixture}
           />
         )}
 
