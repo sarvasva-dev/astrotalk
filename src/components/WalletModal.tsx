@@ -20,18 +20,10 @@ export default function WalletModal({
   onRecharge,
   userId = "default_user",
 }: WalletModalProps) {
-  const [selectedPack, setSelectedPack] = useState<number>(200);
+  const [customAmount, setCustomAmount] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const packs = [
-    { amount: 50, bonus: 10, tag: "Starter Pack" },
-    { amount: 100, bonus: 25, tag: "Value (25% Extra)" },
-    { amount: 200, bonus: 60, tag: "Most Popular (30% Extra)" },
-    { amount: 500, bonus: 175, tag: "Best Value (35% Extra)" },
-    { amount: 1000, bonus: 400, tag: "VIP Pass (40% Extra)" },
-  ];
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Dynamically load Razorpay standard checkout script
   useEffect(() => {
@@ -47,7 +39,18 @@ export default function WalletModal({
   const handlePay = async () => {
     setLoading(true);
     setErrorMessage(null);
-    const pack = packs.find((p) => p.amount === selectedPack) || packs[2];
+    
+    // Enforce min and step
+    if (customAmount < 10) {
+      setErrorMessage("Minimum recharge is ₹10");
+      setLoading(false);
+      return;
+    }
+    if (customAmount % 5 !== 0) {
+      setErrorMessage("Amount must be a multiple of ₹5");
+      setLoading(false);
+      return;
+    }
 
     try {
       // 1. Create order on Express backend
@@ -55,8 +58,8 @@ export default function WalletModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: pack.amount,
-          bonus: pack.bonus,
+          amount: customAmount,
+          bonus: 0,
           userId,
         }),
       });
@@ -74,7 +77,7 @@ export default function WalletModal({
           amount: orderData.amount,
           currency: orderData.currency || "INR",
           name: "Astroguru Jyotish",
-          description: `Wallet Recharge ₹${pack.amount} (+₹${pack.bonus} Bonus)`,
+          description: `Wallet Recharge ₹${customAmount}`,
           order_id: orderData.orderId,
           handler: async function (response: any) {
             // Verify HMAC signature on backend
@@ -86,15 +89,15 @@ export default function WalletModal({
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
                 userId,
-                amount: pack.amount,
-                bonus: pack.bonus,
+                amount: customAmount,
+                bonus: 0,
               }),
             });
 
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
-              onRecharge(pack.amount, pack.bonus);
-              setSuccessMessage(verifyData.message || `Recharged ₹${pack.amount} + ₹${pack.bonus} Bonus!`);
+              onRecharge(customAmount, 0);
+              setSuccessMessage(verifyData.message || `Recharged ₹${customAmount} Successfully!`);
               setTimeout(() => {
                 onClose();
               }, 1800);
@@ -127,14 +130,14 @@ export default function WalletModal({
           razorpayPaymentId: `pay_${Date.now()}`,
           razorpaySignature: "simulated_valid_signature",
           userId,
-          amount: pack.amount,
-          bonus: pack.bonus,
+          amount: customAmount,
+          bonus: 0,
         }),
       });
 
       const verifyData = await verifyRes.json();
-      onRecharge(pack.amount, pack.bonus);
-      setSuccessMessage(verifyData.message || `Recharge of ₹${pack.amount} + ₹${pack.bonus} Bonus Successful!`);
+      onRecharge(customAmount, 0);
+      setSuccessMessage(verifyData.message || `Recharge of ₹${customAmount} Successful!`);
       setTimeout(() => {
         setSuccessMessage(null);
         onClose();
@@ -142,8 +145,8 @@ export default function WalletModal({
     } catch (err: any) {
       console.error("Payment error:", err);
       // Fallback credit to maintain positive user experience
-      onRecharge(pack.amount, pack.bonus);
-      setSuccessMessage(`Recharged ₹${pack.amount} + ₹${pack.bonus} Free Bonus added!`);
+      onRecharge(customAmount, 0);
+      setSuccessMessage(`Recharged ₹${customAmount} successfully!`);
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -217,38 +220,22 @@ export default function WalletModal({
         {/* Recharge Options */}
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-[#786a55] block mb-2.5">
-            Select Recharge Amount
+            Enter Custom Amount (Min ₹10, Multiples of ₹5)
           </span>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            {packs.map((p) => {
-              const isSelected = selectedPack === p.amount;
-              return (
-                <div
-                  key={p.amount}
-                  onClick={() => setSelectedPack(p.amount)}
-                  className={`relative p-3 rounded-xl border text-center cursor-pointer transition-all ${
-                    isSelected
-                      ? "border-[#c8531c] bg-[#fae6cf] shadow-xs"
-                      : "border-[#e6d9b7] bg-[#f6efdc] hover:border-[#c9b884]"
-                  }`}
-                >
-                  {p.tag && (
-                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.2 rounded-full bg-[#c8531c] text-white text-[9px] font-bold tracking-wider uppercase whitespace-nowrap">
-                      {p.tag}
-                    </span>
-                  )}
-                  <span className="text-lg font-display font-bold text-[#1b1612] block mt-1">
-                    ₹{p.amount}
-                  </span>
-                  {p.bonus > 0 && (
-                    <span className="text-[11px] text-[#1f5f5b] font-semibold block">
-                      +₹{p.bonus} Free Cash
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+          <div className="flex gap-2">
+            <span className="flex-none p-3 rounded-xl border border-[#e6d9b7] bg-[#f6efdc] text-lg font-display font-bold text-[#1b1612]">
+              ₹
+            </span>
+            <input
+              type="number"
+              min="10"
+              step="5"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(Number(e.target.value))}
+              className="flex-1 p-3 rounded-xl border border-[#c8531c] bg-[#fae6cf] shadow-xs text-lg font-display font-bold text-[#1b1612] outline-none"
+              placeholder="Enter amount"
+            />
           </div>
         </div>
 
@@ -269,7 +256,7 @@ export default function WalletModal({
             ) : (
               <>
                 <Sparkles size={16} />
-                Recharge ₹{selectedPack} Now
+                Recharge ₹{customAmount} Now
               </>
             )}
           </button>

@@ -135,6 +135,23 @@ export function navigateTo(route: PageRoute, replace = false) {
   }
 
   // Dispatch custom route change event for components
-  window.dispatchEvent(new CustomEvent("app:routechange", { detail: route }));
+  window.dispatchEvent(
+    new CustomEvent("app:routechange", {
+      detail: route,
+    })
+  );
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/**
+ * Programmatically triggers the Clerk Sign-In modal by simulating a click
+ * on a hidden button rendered inside Navbar.tsx
+ */
+export function triggerAuthSignIn(): void {
+  const btn = document.getElementById("clerk-hidden-signin");
+  if (btn) {
+    btn.click();
+  } else {
+    console.warn("Clerk Sign-In button not found. Authentication might not be configured.");
+  }
 }

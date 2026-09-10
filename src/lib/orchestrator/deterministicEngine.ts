@@ -1,5 +1,6 @@
 import type { KundliData, ClassicalRuleCitation } from "../../types";
 import { CLASSICAL_RULES_DATABASE } from "./classicalRules";
+import { calculateGunMilan } from "../vedicEngine/gunMilanEngine";
 
 export type DeterministicAnswerResult = {
   canAnswer: boolean;
@@ -19,6 +20,67 @@ export function evaluateDeterministicAnswer(
   kundli: KundliData | null
 ): DeterministicAnswerResult {
   const q = userQuestion.trim().toLowerCase();
+
+  // 0. Gun Milan / Kundli Matching based on dates provided in the chat
+  if (q.includes("shadi") || q.includes("shaadi") || q.includes("match") || q.includes("gun milan") || q.includes("milan") || q.includes("kundli") || q.includes("marriage")) {
+    const dates: string[] = [];
+    const regex = /\b(\d{1,4})[\/\-\s]+([a-z]{3,9}|\d{1,2})[\/\-\s]+(\d{1,4})\b/gi;
+    let match;
+    while ((match = regex.exec(q)) !== null) {
+      let p1 = match[1];
+      let p2 = match[2];
+      let p3 = match[3];
+      
+      let year = p3.length === 4 ? p3 : (p1.length === 4 ? p1 : null);
+      if (!year) continue; 
+      
+      let day = p1.length <= 2 ? p1 : (p3.length <= 2 ? p3 : null);
+      if (!day) continue;
+      
+      let month = p2;
+      const months: Record<string, string> = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" };
+      const monthLower = month.toLowerCase().substring(0, 3);
+      if (months[monthLower]) {
+        month = months[monthLower];
+      } else if (month.length === 1) {
+        month = "0" + month;
+      }
+      
+      if (year && day && month) {
+         dates.push(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+      }
+    }
+
+    if (dates.length >= 2) {
+      const boy = { name: "Partner 1", dob: dates[0], tob: "12:00", pob: "Unknown" };
+      const girl = { name: "Partner 2", dob: dates[1], tob: "12:00", pob: "Unknown" };
+      const res = calculateGunMilan(boy, girl);
+      
+      let answerText = `**Kundli Matching Result (36 Gunas):**\n\n`;
+      answerText += `• Partner 1 (DOB: ${dates[0]}): ${res.boyDetails.moonSign} Rashi, ${res.boyDetails.nakshatra} Nakshatra\n`;
+      answerText += `• Partner 2 (DOB: ${dates[1]}): ${res.girlDetails.moonSign} Rashi, ${res.girlDetails.nakshatra} Nakshatra\n\n`;
+      answerText += `**Total Score:** ${res.totalScore} / 36\n`;
+      answerText += `**Recommendation:** ${res.recommendation}\n\n`;
+      answerText += `**Manglik Status:** ${res.manglikAnalysis.boyManglik || res.manglikAnalysis.girlManglik ? "Manglik Dosha Present ⚠" : "No Manglik Dosha ✓"}\n\n`;
+      answerText += `${res.summary}\n\n`;
+      if (res.manglikAnalysis.remedies.length > 0) {
+        answerText += `**Remedies:**\n- ${res.manglikAnalysis.remedies.join("\n- ")}\n\n`;
+      }
+      answerText += `*(Note: Exact birth times were omitted. For precise calculations using exact birth times, please use the 'Matching' tab in the top menu.)*`;
+
+      return {
+        canAnswer: true,
+        intentLabel: "CHART_DETERMINISTIC: Gun Milan",
+        answerText,
+        matchedRules: [],
+        factsSummary: [
+          `Partner 1 DOB: ${dates[0]}`,
+          `Partner 2 DOB: ${dates[1]}`,
+          `Score: ${res.totalScore}/36`
+        ]
+      };
+    }
+  }
 
   // 1. Definition Queries: "Purva Phalguni kya hota hai?", "Purva Phalguni nakshatra"
   if (q.includes("purva phalguni") || (q.includes("phalguni") && !q.includes("uttara"))) {

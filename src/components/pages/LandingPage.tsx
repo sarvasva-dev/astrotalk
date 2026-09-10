@@ -5,17 +5,17 @@ import {
   Sparkles,
   ShieldCheck,
   Star,
-  Users,
   Compass,
   HeartHandshake,
   Clock,
   ChevronRight,
-  BookOpen,
   Award,
   HelpCircle,
   TrendingUp,
-  CheckCircle2,
-  Lock,
+  Download,
+  Flame,
+  Zap,
+  Globe2,
 } from "lucide-react";
 import type { Counsellor, PageRoute, UserProfile } from "../../types";
 import { SEED_COUNSELLORS } from "../../data/counsellors";
@@ -30,24 +30,24 @@ interface LandingPageProps {
 
 const FAQ_ITEMS = [
   {
-    question: "Why should I consult an online astrologer on Astroguru?",
-    answer: "Astroguru connects you directly with 1,200+ rigorously vetted and certified Vedic astrologers, numerologists, tarot readers, and Prashna experts. You receive genuine Shastric insights with 100% confidential privacy, live voice calls, and real-time interactive chats.",
+    question: "Why should I consult AstroGuru 247 for online Vedic astrology?",
+    answer: "AstroGuru 247 combines canonical Parashari Vedic Jyotish with high-speed Multi-LLM AI orchestration. Get instant predictions, daily horoscopes, true sidereal Kundli calculations, and live certified astrologer consultations 24 hours a day.",
   },
   {
-    question: "How accurate is the Astroguru online Kundli generation?",
-    answer: "Our Kundli calculation engine uses the canonical Lahiri Ayanamsa (Chitra Paksha) with high-precision true sidereal planet algorithms. It calculates exact planetary longitudes, Bhavas, Nakshatra Padas, and Vimshottari Dasha trees verified against standard ephemeris benchmarks.",
+    question: "How accurate are the free AI Kundli and Life Timeline reports?",
+    answer: "Our calculation engine is built on Lahiri Ayanamsa (Chitra Paksha) with high-precision Swiss Ephemeris data. It computes exact planetary longitudes, Vimshottari Mahadasha progression trees, and Ashtakavarga points with 100% mathematical accuracy.",
   },
   {
-    question: "What is Kundli Matching (Gun Milan) and how does it work?",
-    answer: "Gun Milan is the classical Ashta Koota method evaluating 36 total Gunas between the bride and groom: Varna (1), Vashya (2), Tara (3), Yoni (4), Graha Maitri (5), Gana (6), Bhakoot (7), and Nadi (8). A score of 18 or above indicates positive marital compatibility.",
+    question: "How does the AstroGuru PWA app installation work?",
+    answer: "You can install AstroGuru 247 directly on your Android, iOS, or Desktop home screen without searching through app stores! Simply click the 'Install App' button to get a full native app experience with offline wisdom access.",
   },
   {
-    question: "Is my personal data and consultation history private?",
-    answer: "Yes, 100%. All personal birth details, consultation audio calls, and chat transcripts are strictly encrypted. Your phone number is never shared with astrologers.",
+    question: "Is my personal birth data and conversation history private?",
+    answer: "Yes, 100%. All personal birth details, consultation voice calls, and chat transcripts are end-to-end protected. Your personal contact details are never exposed.",
   },
   {
-    question: "How does wallet recharge and billing work?",
-    answer: "You can recharge your wallet securely with Razorpay, UPI, debit/credit cards, and net banking. Billing is strictly pay-per-minute with real-time balance tracking and no hidden charges.",
+    question: "What languages are supported for AI consultation?",
+    answer: "AstroGuru 247 supports consultation in Hindi, Hinglish, English, Tamil, Telugu, Kannada, Bengali, Marathi, and Gujarati.",
   },
 ];
 
@@ -60,18 +60,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   useEffect(() => {
     updateSEO({
-      title: "Astroguru: Talk to Best Astrologers Live | Kundli, Horoscope & Gun Milan",
-      description: "Consult India's best verified Vedic astrologers, tarot readers, and numerologists on call and chat. Get free online Kundli, 36 Guna Milan matching, and daily horoscopes on Astroguru.",
+      title: "AstroGuru 247 — AI Vedic Astrologer & Live Jyotish Consultations",
+      description: "Consult India's top verified AI & human Vedic astrologers, tarot readers, and numerologists on call and chat. Free online Kundli, Gun Milan, and daily horoscopes.",
       canonicalPath: "/",
       keywords: [
-        "astroguru",
+        "astroguru 247",
+        "ai astrologer",
         "talk to astrologer",
-        "online astrology consultation",
+        "vedic astrology app",
         "free kundli",
-        "kundli matching",
         "gun milan",
-        "vedic astrology",
-        "daily horoscope",
         "tarot reading",
       ],
     });
@@ -82,371 +80,320 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const featuredAstrologers = SEED_COUNSELLORS.slice(0, 4);
 
   return (
-    <div className="w-full bg-[#fcfaf7] text-[#2c2416] pb-16">
+    <div className="w-full text-slate-100 pb-20">
       {/* 1. HERO SECTION */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#fae6cf] via-[#fff8ef] to-[#fcfaf7] border-b border-[#ebd7be] py-12 md:py-16 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#fae6cf] border border-[#f3a76d] text-[#c8531c] text-xs font-semibold uppercase tracking-wider mb-4 shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              1,240+ Astrologers Online Now
+      <section className="relative pt-12 pb-20 px-4 overflow-hidden border-b border-cyan-500/20">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12">
+          <div className="max-w-2xl text-left">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-6 backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              <span>24/7 AI Vedic Jyotish & Live Consultations</span>
             </div>
 
-            <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-[#1a140d] leading-tight mb-4">
-              Clear Answers to Life's Deepest Questions.
+            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-tight mb-6">
+              Your Personal AI Astrologer, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-orange-400">Available Anytime.</span>
             </h1>
 
-            <p className="text-base sm:text-lg text-[#614d33] mb-6 leading-relaxed">
-              Connect with India's most respected Vedic astrologers, tarot readers, and numerologists in seconds. 100% private, verified, and grounded in classical Shastra.
+            <p className="text-base sm:text-lg text-slate-300 mb-8 leading-relaxed">
+              Experience the future of Vedic Jyotish. Instant birth chart analysis, life timelines, remedies, and live 1-on-1 consultations in your mother tongue.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <button
                 type="button"
                 onClick={() => onNavigate({ page: "consult" })}
-                className="px-6 py-3 bg-[#c8531c] hover:bg-[#a64013] text-white font-medium rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-98"
+                className="btn-cosmic-primary text-sm px-6 py-3.5 flex items-center gap-2"
               >
-                <Phone size={18} />
-                <span>Talk to Astrologer</span>
+                <Sparkles className="w-4 h-4 text-orange-200" />
+                <span>Start Free AI Reading →</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onNavigate({ page: "kundli" })}
-                className="px-6 py-3 bg-white hover:bg-[#fae6cf]/50 text-[#85350f] border border-[#f3a76d] font-medium rounded-xl shadow-xs transition-all flex items-center gap-2"
+                className="btn-cosmic-teal text-sm px-6 py-3.5 flex items-center gap-2"
               >
-                <Sparkles size={18} />
+                <Compass className="w-4 h-4" />
                 <span>Free Kundli Report</span>
               </button>
             </div>
 
-            {/* Micro Trust Indicators */}
-            <div className="flex items-center gap-6 mt-6 pt-4 border-t border-[#f3a76d]/40 text-xs text-[#826a48]">
-              <span className="flex items-center gap-1">
-                <ShieldCheck size={14} className="text-emerald-600" /> 100% Private & Confidential
+            <div className="flex items-center gap-6 mt-8 pt-6 border-t border-slate-800 text-xs text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> 100% Private & Encrypted
               </span>
-              <span className="flex items-center gap-1">
-                <Star size={14} className="text-amber-500 fill-amber-500" /> 4.9/5 Rating (5M+ Reviews)
+              <span className="flex items-center gap-1.5">
+                <Star className="w-4 h-4 text-amber-400 fill-amber-400" /> 4.9/5 Rating (50K+ Readings)
               </span>
             </div>
           </div>
 
-          {/* Quick Kundli Preview Card */}
-          <div className="w-full md:w-80 bg-white rounded-2xl p-5 border border-[#ebd7be] shadow-lg relative">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#c8531c]">
-                Quick Kundli Check
+          {/* Quick Preview Card */}
+          <div className="w-full md:w-90 card-cosmic p-6 relative group border-cyan-500/30">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 text-orange-400" /> Free AI Birth Chart
               </span>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                100% FREE
+              <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-bold px-2 py-0.5 rounded-full border border-cyan-500/30">
+                SWISS EPHEMERIS
               </span>
             </div>
-            <h3 className="font-serif font-bold text-lg text-[#2c2416] mb-1">
-              Know Your Janma Kundli
+            <h3 className="font-display font-bold text-xl text-white mb-2">
+              Instant Janma Kundli
             </h3>
-            <p className="text-xs text-[#826a48] mb-4">
-              Instant D1 chart, Lagna lord, Janma Nakshatra, and current Vimshottari Mahadasha.
+            <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+              Calculate exact D1 Rashi, Navamsha D9, Mahadasha timeline, and Lagna Lord placements in seconds.
             </p>
-            <div className="space-y-2 mb-4 text-xs">
-              <div className="p-2.5 rounded-lg bg-[#fcfaf7] border border-[#ebd7be] flex items-center justify-between">
-                <span className="text-[#826a48]">Ayanamsa System</span>
-                <span className="font-semibold text-[#2c2416]">Lahiri (Chitra Paksha)</span>
+
+            <div className="space-y-2.5 mb-5 text-xs">
+              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                <span className="text-slate-400">Ayanamsa</span>
+                <span className="font-semibold text-cyan-300">Lahiri (Chitra Paksha)</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-[#fcfaf7] border border-[#ebd7be] flex items-center justify-between">
-                <span className="text-[#826a48]">Divisional Charts</span>
-                <span className="font-semibold text-[#2c2416]">D1 (Rashi) & D9 (Navamsha)</span>
+              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                <span className="text-slate-400">Multi-LLM Engine</span>
+                <span className="font-semibold text-orange-400">Groq + Gemini Router</span>
               </div>
             </div>
+
             <button
               type="button"
               onClick={() => onNavigate({ page: "kundli" })}
-              className="w-full py-2.5 bg-[#fae6cf] hover:bg-[#f3a76d] text-[#85350f] font-semibold text-xs rounded-xl transition-all text-center flex items-center justify-center gap-1.5"
+              className="w-full py-3 btn-cosmic-primary text-xs flex items-center justify-center gap-2"
             >
               <span>Generate Free Kundli</span>
-              <ChevronRight size={14} />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       </section>
 
-      {/* 2. LIVE STATS STRIP */}
-      <section className="bg-white border-b border-[#ebd7be] py-6 px-4">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      {/* 2. STATS BAR */}
+      <section className="border-b border-slate-800/80 bg-slate-950/40 py-8 px-4">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div>
-            <div className="text-2xl sm:text-3xl font-bold font-serif text-[#c8531c]">1,200+</div>
-            <div className="text-xs sm:text-sm text-[#826a48] font-medium mt-1">Verified Astrologers</div>
+            <div className="text-3xl font-display font-bold text-cyan-400 glow-teal">50,000+</div>
+            <div className="text-xs text-slate-400 mt-1">AI Readings Completed</div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-bold font-serif text-[#c8531c]">5 Million+</div>
-            <div className="text-xs sm:text-sm text-[#826a48] font-medium mt-1">Happy Seekers</div>
+            <div className="text-3xl font-display font-bold text-orange-400 glow-orange">1,200+</div>
+            <div className="text-xs text-slate-400 mt-1">Verified Human Astrologers</div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-bold font-serif text-[#c8531c]">12 Million+</div>
-            <div className="text-xs sm:text-sm text-[#826a48] font-medium mt-1">Consultation Minutes</div>
+            <div className="text-3xl font-display font-bold text-purple-400">12 Languages</div>
+            <div className="text-xs text-slate-400 mt-1">Hindi, English, Vernacular</div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-bold font-serif text-[#c8531c]">4.9 / 5 ★</div>
-            <div className="text-xs sm:text-sm text-[#826a48] font-medium mt-1">Average Review Rating</div>
+            <div className="text-3xl font-display font-bold text-amber-400 glow-gold">4.9 / 5 ★</div>
+            <div className="text-xs text-slate-400 mt-1">Average User Satisfaction</div>
           </div>
         </div>
       </section>
 
-      {/* 3. POPULAR ASTROLOGY TOOLS GRID */}
-      <section className="max-w-6xl mx-auto py-12 px-4">
-        <div className="text-center max-w-xl mx-auto mb-8">
-          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#1a140d]">
-            Free Astrological Services & Tools
+      {/* 3. FEATURE SERVICES GRID */}
+      <section className="max-w-6xl mx-auto py-16 px-4">
+        <div className="text-center max-w-xl mx-auto mb-12">
+          <h2 className="font-display text-3xl font-bold text-white mb-3">
+            Explore Vedic Wisdom Tools
           </h2>
-          <p className="text-sm text-[#826a48] mt-1">
-            Trusted by millions for marriage matching, career planning, and daily auspicious timings.
+          <p className="text-sm text-slate-400">
+            Powered by high-precision astronomical ephemeris and AI reasoning.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <button
             type="button"
             onClick={() => onNavigate({ page: "kundli" })}
-            className="p-5 rounded-2xl bg-white border border-[#ebd7be] hover:border-[#c8531c] hover:shadow-md transition-all text-left flex flex-col justify-between group"
+            className="card-cosmic p-6 text-left flex flex-col justify-between group"
           >
             <div>
-              <div className="w-10 h-10 rounded-xl bg-[#fae6cf] flex items-center justify-center text-[#c8531c] mb-3 group-hover:scale-105 transition-transform">
-                <Compass size={20} />
+              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-4 group-hover:scale-110 transition-transform">
+                <Compass className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-base text-[#2c2416] mb-1">Janma Kundli</h3>
-              <p className="text-xs text-[#826a48] leading-relaxed">
-                Accurate birth chart analysis, planetary longitudes, houses, and Parashari aspects.
+              <h3 className="font-bold text-lg text-white mb-2">Janma Kundli</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Full 12 house division, planetary strengths, Ashtakavarga points, and Vimshottari Mahadasha.
               </p>
             </div>
-            <span className="text-xs font-semibold text-[#c8531c] mt-4 flex items-center gap-1">
-              View Kundli <ChevronRight size={14} />
+            <span className="text-xs font-semibold text-cyan-400 mt-6 flex items-center gap-1">
+              Check Kundli <ChevronRight className="w-4 h-4" />
             </span>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigate({ page: "kundli-matching" })}
-            className="p-5 rounded-2xl bg-white border border-[#ebd7be] hover:border-[#c8531c] hover:shadow-md transition-all text-left flex flex-col justify-between group"
+            className="card-cosmic p-6 text-left flex flex-col justify-between group"
           >
             <div>
-              <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center text-pink-600 mb-3 group-hover:scale-105 transition-transform">
-                <HeartHandshake size={20} />
+              <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 mb-4 group-hover:scale-110 transition-transform">
+                <HeartHandshake className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-base text-[#2c2416] mb-1">Kundli Matching</h3>
-              <p className="text-xs text-[#826a48] leading-relaxed">
-                Ashta Koota 36 Guna Milan, Manglik Dosha compatibility, and marriage remedies.
+              <h3 className="font-bold text-lg text-white mb-2">36 Guna Milan</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Ashta Koota matching, Nadi Dosha check, Manglik compatibility, and remedy suggestions.
               </p>
             </div>
-            <span className="text-xs font-semibold text-pink-600 mt-4 flex items-center gap-1">
-              Match 36 Gunas <ChevronRight size={14} />
+            <span className="text-xs font-semibold text-pink-400 mt-6 flex items-center gap-1">
+              Match Compatibility <ChevronRight className="w-4 h-4" />
             </span>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigate({ page: "horoscope" })}
-            className="p-5 rounded-2xl bg-white border border-[#ebd7be] hover:border-[#c8531c] hover:shadow-md transition-all text-left flex flex-col justify-between group"
+            className="card-cosmic p-6 text-left flex flex-col justify-between group"
           >
             <div>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 mb-3 group-hover:scale-105 transition-transform">
-                <Clock size={20} />
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-4 group-hover:scale-110 transition-transform">
+                <Clock className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-base text-[#2c2416] mb-1">Horoscope & Panchang</h3>
-              <p className="text-xs text-[#826a48] leading-relaxed">
-                Daily, weekly, and monthly predictions, Rahu Kaal, Abhijit Muhurat, and Tithis.
+              <h3 className="font-bold text-lg text-white mb-2">Daily Panchang</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Tithi, Nakshatra, Yoga, Karana, Rahu Kaal, and Abhijit Muhurat updated every sunrise.
               </p>
             </div>
-            <span className="text-xs font-semibold text-amber-600 mt-4 flex items-center gap-1">
-              Check Today's Tithi <ChevronRight size={14} />
+            <span className="text-xs font-semibold text-amber-400 mt-6 flex items-center gap-1">
+              View Muhurat <ChevronRight className="w-4 h-4" />
             </span>
           </button>
 
           <button
             type="button"
             onClick={() => onNavigate({ page: "tarot" })}
-            className="p-5 rounded-2xl bg-white border border-[#ebd7be] hover:border-[#c8531c] hover:shadow-md transition-all text-left flex flex-col justify-between group"
+            className="card-cosmic p-6 text-left flex flex-col justify-between group"
           >
             <div>
-              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 mb-3 group-hover:scale-105 transition-transform">
-                <Sparkles size={20} />
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-base text-[#2c2416] mb-1">3-Card Tarot Reading</h3>
-              <p className="text-xs text-[#826a48] leading-relaxed">
-                Past, Present, and Future guidance for love, careers, and critical life decisions.
+              <h3 className="font-bold text-lg text-white mb-2">Tarot Reading</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                3-Card Past, Present, Future draws for career decisions, relationships, and life clarity.
               </p>
             </div>
-            <span className="text-xs font-semibold text-purple-600 mt-4 flex items-center gap-1">
-              Draw 3 Cards <ChevronRight size={14} />
+            <span className="text-xs font-semibold text-purple-400 mt-6 flex items-center gap-1">
+              Draw Cards <ChevronRight className="w-4 h-4" />
             </span>
           </button>
         </div>
       </section>
 
-      {/* 4. FEATURED TOP ASTROLOGERS */}
-      <section className="bg-white border-y border-[#ebd7be] py-12 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-            <div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#1a140d]">
-                Top Verified Astrologers
-              </h2>
-              <p className="text-sm text-[#826a48]">
-                Certified scholars with 15+ years of Vedic, Nadi, and KP astrology experience.
+      {/* 4. THE ASTROGURU AI */}
+      <section className="py-16 px-4 border-y border-slate-800 bg-slate-950/60">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="mb-8">
+            <h2 className="font-display text-3xl font-bold text-white mb-2">
+              Meet AstroGuru AI
+            </h2>
+            <p className="text-sm text-slate-400">
+              The world's most advanced Vedic Jyotish intelligence, trained on thousands of years of Shastras.
+            </p>
+          </div>
+
+          <div className="card-cosmic p-8 max-w-2xl mx-auto flex flex-col md:flex-row items-center gap-8">
+            <img
+              src="/logo.png"
+              alt="AstroGuru AI"
+              className="w-32 h-32 rounded-3xl object-cover shadow-[0_0_30px_rgba(34,211,238,0.2)] border-2 border-cyan-500/50"
+            />
+            <div className="flex-1 text-center md:text-left">
+              <h3 className="font-bold text-2xl text-white mb-2">AstroGuru AI</h3>
+              <p className="text-sm text-slate-300 mb-6">
+                Instant, hyper-accurate readings synthesizing Vedic astrology, Tarot, and Numerology.
               </p>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4">
+                <button
+                  type="button"
+                  onClick={() => onStartChat(SEED_COUNSELLORS[0])}
+                  className="w-full sm:w-auto py-3 px-6 btn-cosmic-teal text-sm flex items-center justify-center gap-2 font-semibold"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Start Chat (₹5/msg)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onStartCall(SEED_COUNSELLORS[0])}
+                  className="w-full sm:w-auto py-3 px-6 btn-cosmic-primary text-sm flex items-center justify-center gap-2 font-semibold"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>Voice Call (₹20/min)</span>
+                </button>
+              </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. PWA INSTALL BANNER */}
+      <section className="max-w-6xl mx-auto py-16 px-4">
+        <div className="card-cosmic p-8 md:p-12 border-cyan-500/40 relative overflow-hidden bg-gradient-to-r from-cyan-950/60 via-slate-900 to-indigo-950/60 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="max-w-xl text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-semibold mb-4 border border-cyan-500/30">
+              <Download className="w-3.5 h-3.5" />
+              <span>Install Mobile PWA App</span>
+            </div>
+            <h2 className="font-display text-3xl font-bold text-white mb-3">
+              Get AstroGuru 247 on Your Home Screen
+            </h2>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Enjoy 1-click access, instant notifications for Rahu Kaal, daily horoscope alerts, and smooth offline Kundli browsing. No App Store download required!
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
             <button
-              type="button"
-              onClick={() => onNavigate({ page: "consult" })}
-              className="px-4 py-2 text-xs font-bold text-[#c8531c] bg-[#fae6cf] hover:bg-[#f3a76d]/40 rounded-xl transition-all flex items-center gap-1"
+              onClick={() => {
+                const pwaBtn = document.querySelector('[data-pwa-install]');
+                if (pwaBtn) (pwaBtn as HTMLElement).click();
+                else alert('To install AstroGuru 247: Tap your browser menu (⋮ or Share) and select "Add to Home Screen"');
+              }}
+              className="btn-cosmic-primary text-sm px-8 py-4 flex items-center gap-2 shadow-xl shadow-orange-500/20"
             >
-              <span>View All 1,200+ Astrologers</span>
-              <ChevronRight size={14} />
+              <Download className="w-4 h-4" />
+              <span>Install App Now (Free)</span>
             </button>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {featuredAstrologers.map((c) => (
-              <div
-                key={c.slug}
-                className="bg-[#fcfaf7] rounded-2xl border border-[#ebd7be] p-4 flex flex-col justify-between hover:shadow-md transition-all"
-              >
-                <div>
-                  <div className="flex items-start gap-3 mb-3">
-                    <img
-                      src={c.portrait}
-                      alt={c.name}
-                      referrerPolicy="no-referrer"
-                      className="w-14 h-14 rounded-xl object-cover border border-[#ebd7be]"
-                    />
-                    <div>
-                      <h3
-                        onClick={() => onNavigate({ page: "astrologer-detail", slug: c.slug })}
-                        className="font-bold text-sm text-[#2c2416] hover:text-[#c8531c] cursor-pointer transition-colors"
-                      >
-                        {c.name}
-                      </h3>
-                      <div className="text-xs text-[#826a48]">{c.specialties.slice(0, 2).join(", ")}</div>
-                      <div className="flex items-center gap-1 text-xs text-amber-600 mt-1 font-semibold">
-                        <Star size={12} className="fill-amber-500" />
-                        <span>{c.rating.toFixed(1)}</span>
-                        <span className="text-[#a48e71] font-normal">({c.ordersCount.toLocaleString()} orders)</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-[#614d33] line-clamp-2 mb-3">
-                    {c.tagline}
-                  </p>
-
-                  <div className="flex items-center justify-between text-xs py-2 border-t border-[#ebd7be] mb-3">
-                    <span className="text-[#826a48]">Fee:</span>
-                    <span className="font-bold text-[#2c2416]">₹{c.pricePerMin}/min</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onStartChat(c)}
-                    className="py-2 bg-white hover:bg-[#fae6cf] text-[#85350f] border border-[#f3a76d] rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    <MessageSquare size={13} />
-                    <span>Chat</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onStartCall(c)}
-                    className="py-2 bg-[#c8531c] hover:bg-[#a64013] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                  >
-                    <Phone size={13} />
-                    <span>Call</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
-      {/* 5. WHY ASTROGURU */}
-      <section className="max-w-6xl mx-auto py-12 px-4">
-        <div className="text-center max-w-xl mx-auto mb-10">
-          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#1a140d]">
-            Why 5 Million+ Trust Astroguru
-          </h2>
-          <p className="text-sm text-[#826a48] mt-1">
-            Built on pure Vedic astronomy, customer privacy, and verified astrologers.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl p-6 border border-[#ebd7be] text-center">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-              <Lock size={24} />
-            </div>
-            <h3 className="font-bold text-base text-[#2c2416] mb-2">100% Privacy Guaranteed</h3>
-            <p className="text-xs text-[#826a48] leading-relaxed">
-              Your chats, voice calls, and Kundli records are strictly confidential. Astrologers never see your phone number or banking information.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 border border-[#ebd7be] text-center">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4">
-              <Award size={24} />
-            </div>
-            <h3 className="font-bold text-base text-[#2c2416] mb-2">Rigorously Tested Astrologers</h3>
-            <p className="text-xs text-[#826a48] leading-relaxed">
-              Only 1 in 20 astrologers clears our 4-stage verification exam conducted by senior Kashi and Banaras Sanskrit scholars.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 border border-[#ebd7be] text-center">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4">
-              <TrendingUp size={24} />
-            </div>
-            <h3 className="font-bold text-base text-[#2c2416] mb-2">Canonical Vedic Ephemeris</h3>
-            <p className="text-xs text-[#826a48] leading-relaxed">
-              Calculations powered by Lahiri Ayanamsa, Swiss Ephemeris precision, and 120-year Vimshottari progression trees.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. FAQ ACCORDION (SEO RICH) */}
+      {/* 6. FAQ ACCORDION */}
       <section className="max-w-4xl mx-auto py-12 px-4">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-1 text-xs font-bold uppercase text-[#c8531c] tracking-wider mb-2">
-            <HelpCircle size={14} />
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase text-cyan-400 tracking-wider mb-2">
+            <HelpCircle className="w-4 h-4" />
             <span>Frequently Asked Questions</span>
           </div>
-          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#1a140d]">
+          <h2 className="font-display text-3xl font-bold text-white">
             Everything You Need to Know
           </h2>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {FAQ_ITEMS.map((faq, idx) => {
             const isOpen = activeFaq === idx;
             return (
               <div
                 key={idx}
-                className="bg-white rounded-xl border border-[#ebd7be] overflow-hidden transition-all"
+                className="card-cosmic overflow-hidden transition-all"
               >
                 <button
                   type="button"
                   onClick={() => setActiveFaq(isOpen ? null : idx)}
-                  className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-[#2c2416] hover:bg-[#fcfaf7]"
+                  className="w-full text-left p-5 flex items-center justify-between gap-4 font-semibold text-sm md:text-base text-white hover:text-cyan-300"
                 >
                   <span>{faq.question}</span>
                   <ChevronRight
-                    size={18}
-                    className={`text-[#c8531c] shrink-0 transition-transform ${
+                    className={`w-5 h-5 text-cyan-400 shrink-0 transition-transform ${
                       isOpen ? "rotate-90" : ""
                     }`}
                   />
                 </button>
                 {isOpen && (
-                  <div className="p-4 sm:p-5 pt-0 text-xs sm:text-sm text-[#614d33] leading-relaxed border-t border-[#fcfaf7]">
+                  <div className="p-5 pt-0 text-xs md:text-sm text-slate-300 leading-relaxed border-t border-slate-800/60">
                     {faq.answer}
                   </div>
                 )}
@@ -456,21 +403,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 7. BOTTOM CTA BANNER */}
-      <section className="max-w-6xl mx-auto px-4 mt-6">
-        <div className="bg-gradient-to-r from-[#fae6cf] to-[#ebd7be] rounded-3xl p-8 sm:p-12 border border-[#f3a76d] flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="max-w-xl text-center sm:text-left">
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#1a140d] mb-2">
-              Ready to find clarity about your future?
-            </h2>
-            <p className="text-xs sm:text-sm text-[#614d33]">
-              Join over 5 million seekers today. Instant voice calls and live chats starting at just ₹20/minute.
-            </p>
-          </div>
+      {/* 7. FOOTER CTA */}
+      <section className="max-w-6xl mx-auto px-4 mt-8">
+        <div className="card-cosmic p-8 md:p-12 text-center bg-gradient-to-b from-slate-900 to-cyan-950/40 border-cyan-500/30">
+          <h2 className="font-display text-3xl font-bold text-white mb-3">
+            Ready for Deep Astrological Guidance?
+          </h2>
+          <p className="text-sm text-slate-300 max-w-xl mx-auto mb-8">
+            Join over 50,000 seekers receiving daily Vedic insights and AI consultations.
+          </p>
           <button
             type="button"
             onClick={() => onNavigate({ page: "consult" })}
-            className="px-8 py-3.5 bg-[#c8531c] hover:bg-[#a64013] text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-98 shrink-0"
+            className="btn-cosmic-primary text-sm px-8 py-4"
           >
             Start Your First Consultation
           </button>

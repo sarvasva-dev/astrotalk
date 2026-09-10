@@ -1,45 +1,79 @@
 import React from "react";
-import { Sparkles, Phone, ScrollText, HeartHandshake, User } from "lucide-react";
+import { Sparkles, Phone, ScrollText, User } from "lucide-react";
 import type { PageRoute } from "../types";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
 
 interface BottomNavProps {
   currentRoute: PageRoute;
   onNavigate: (route: PageRoute) => void;
+  isClerkConfigured?: boolean;
 }
 
-export default function BottomNav({ currentRoute, onNavigate }: BottomNavProps) {
-  const tabs: {
-    id: string;
-    label: string;
-    route: PageRoute;
-    icon: React.ComponentType<{ size?: number; className?: string }>;
-  }[] = [
-    { id: "home", label: "Home", route: { page: "landing" }, icon: Sparkles },
-    { id: "consult", label: "Consult", route: { page: "consult" }, icon: Phone },
-    { id: "kundli", label: "Kundli", route: { page: "kundli" }, icon: ScrollText },
-    { id: "matching", label: "Match", route: { page: "kundli-matching" }, icon: HeartHandshake },
-    { id: "profile", label: "Profile", route: { page: "profile" }, icon: User },
-  ];
+export default function BottomNav({ currentRoute, onNavigate, isClerkConfigured = false }: BottomNavProps) {
+  const isRouteActive = (page: string) => currentRoute.page === page;
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#fbf6e8]/95 backdrop-blur-md border-t border-[#c9b884] px-2 py-1.5 shadow-lg flex items-center justify-around">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = currentRoute.page === tab.route.page;
-        return (
+    <nav className="fixed bottom-0 left-0 w-full z-50 bg-[#fbf6e8] border-t border-[#c9b884] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden pb-[env(safe-area-inset-bottom)]">
+      <div className="flex items-center justify-between px-2 py-2">
+        <button
+          onClick={() => onNavigate({ page: "landing" })}
+          className={`flex flex-col items-center justify-center w-full py-1 ${
+            isRouteActive("landing") ? "text-[#c8531c]" : "text-[#786a55]"
+          }`}
+        >
+          <Sparkles size={20} className={isRouteActive("landing") ? "animate-pulse" : ""} />
+          <span className="text-[10px] font-semibold mt-1">Home</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate({ page: "kundli" })}
+          className={`flex flex-col items-center justify-center w-full py-1 ${
+            isRouteActive("kundli") ? "text-[#c8531c]" : "text-[#786a55]"
+          }`}
+        >
+          <ScrollText size={20} />
+          <span className="text-[10px] font-semibold mt-1">Kundli</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate({ page: "consult" })}
+          className={`flex flex-col items-center justify-center w-full py-1 ${
+            isRouteActive("consult") ? "text-[#c8531c]" : "text-[#786a55]"
+          }`}
+        >
+          <Phone size={20} />
+          <span className="text-[10px] font-semibold mt-1">Consult</span>
+        </button>
+
+        {isClerkConfigured ? (
+          <div className="flex flex-col items-center justify-center w-full py-1">
+            <SignedIn>
+              <div onClick={() => onNavigate({ page: "profile" })} className="flex flex-col items-center cursor-pointer">
+                 <UserButton afterSignOutUrl="/" />
+                 <span className="text-[10px] font-semibold mt-1 text-[#786a55]">Profile</span>
+              </div>
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="flex flex-col items-center justify-center text-[#786a55]">
+                  <User size={20} />
+                  <span className="text-[10px] font-semibold mt-1">Login</span>
+                </button>
+              </SignInButton>
+            </SignedOut>
+          </div>
+        ) : (
           <button
-            key={tab.id}
-            type="button"
-            onClick={() => onNavigate(tab.route)}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
-              isActive ? "text-[#c8531c] font-bold" : "text-[#786a55] hover:text-[#1b1612]"
+            onClick={() => onNavigate({ page: "profile" })}
+            className={`flex flex-col items-center justify-center w-full py-1 ${
+              isRouteActive("profile") ? "text-[#c8531c]" : "text-[#786a55]"
             }`}
           >
-            <Icon size={18} className={isActive ? "scale-110" : ""} />
-            <span className="text-[10px] mt-0.5">{tab.label}</span>
+            <User size={20} />
+            <span className="text-[10px] font-semibold mt-1">Profile</span>
           </button>
-        );
-      })}
-    </div>
+        )}
+      </div>
+    </nav>
   );
 }

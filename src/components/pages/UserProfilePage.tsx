@@ -139,18 +139,39 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     });
   }, []);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateProfile({
+    const updatedProfile = {
       ...userProfile,
       displayName,
       gender,
       birthDate,
       birthTime,
       birthPlace,
-    });
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    };
+    
+    // Optimistic UI update
+    onUpdateProfile(updatedProfile);
+    
+    // Persist to database
+    try {
+      await fetch("/api/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userProfile.id || "default_user",
+          displayName,
+          gender,
+          birthDate,
+          birthTime,
+          birthPlace,
+        }),
+      });
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to save profile to DB", err);
+    }
   };
 
   return (

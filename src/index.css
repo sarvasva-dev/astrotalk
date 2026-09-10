@@ -1,45 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f6efdc;
-  --paper-deep: #ebe2c8;
-  --paper-edge: #d9cda7;
-  --vellum: #fbf6e8;
-  --ink: #1b1612;
-  --ink-soft: #3d342a;
-  --ink-faint: #786a55;
-  --ink-mute: #a89a7d;
+  /* Dark Cosmic Theme Colors */
+  --bg-space: #070d1a;
+  --bg-card: rgba(13, 22, 42, 0.75);
+  --bg-card-hover: rgba(18, 30, 58, 0.85);
+  --bg-surface: #0b1528;
+  
+  --border-cosmic: rgba(6, 182, 212, 0.2);
+  --border-cosmic-bright: rgba(6, 182, 212, 0.5);
+  --border-glow: rgba(249, 115, 22, 0.3);
 
-  --saffron: #c8531c;
-  --saffron-warm: #e07a3e;
-  --saffron-soft: #f3a76d;
-  --saffron-wash: #fae6cf;
-  --saffron-ink: #5e2308;
+  --accent-teal: #06b6d4;
+  --accent-teal-light: #22d3ee;
+  --accent-orange: #f97316;
+  --accent-orange-light: #fb923c;
+  --accent-purple: #8b5cf6;
+  --accent-gold: #f59e0b;
 
-  --peacock: #1f5f5b;
-  --peacock-soft: #3f8a82;
-  --peacock-wash: #d9ece8;
-
-  --sindoor: #a8231a;
-  --sindoor-soft: #d35a4f;
-  --sindoor-wash: #f4d6cf;
-
-  --gold: #b8860b;
-
-  --card-border: #e6d9b7;
-  --card-border-strong: #c9b884;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
 }
 
 body {
-  background-color: var(--paper);
-  color: var(--ink);
+  background-color: var(--bg-space);
+  color: var(--text-main);
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  background-image:
-    radial-gradient(120% 80% at 50% 0%, transparent 60%, rgba(106, 76, 30, 0.07) 100%),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.09 0 0 0 0 0.05 0 0 0 0.15 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/></svg>");
+  background-image: 
+    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(6, 182, 212, 0.15), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(139, 92, 246, 0.12), transparent 70%);
   background-attachment: fixed;
-  background-size: auto, 220px 220px;
+  min-height: 100vh;
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
 }
 
 .font-display {
@@ -52,87 +46,120 @@ body {
   font-family: 'Cinzel', serif;
 }
 
-.card-paper {
-  background: var(--vellum);
-  border: 1px solid var(--card-border);
-  border-radius: 1rem;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 2px 8px -2px rgba(60, 40, 10, 0.06);
+/* Glassmorphic Cosmic Card */
+.card-cosmic {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-cosmic);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4), 0 0 15px rgba(6, 182, 212, 0.05);
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.btn-saffron {
+.card-cosmic:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-cosmic-bright);
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.6), 0 0 20px rgba(6, 182, 212, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Glowing Primary CTA Button (Saffron Orange) */
+.btn-cosmic-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
+  padding: 0.75rem 1.5rem;
   border-radius: 9999px;
   font-weight: 600;
-  color: #fff;
-  background: linear-gradient(180deg, var(--saffron-warm) 0%, var(--saffron) 100%);
-  border: 1px solid var(--saffron-ink);
-  box-shadow: inset 0 1px 0 rgba(255, 232, 200, 0.4), 0 2px 6px rgba(168, 60, 15, 0.25);
-  transition: all 150ms ease;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border: 1px solid rgba(253, 186, 116, 0.4);
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 200ms ease;
   cursor: pointer;
 }
 
-.btn-saffron:hover {
-  filter: brightness(1.05);
-  transform: translateY(-1px);
+.btn-cosmic-primary:hover {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  box-shadow: 0 0 28px rgba(249, 115, 22, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
 }
 
-.btn-saffron:active {
+.btn-cosmic-primary:active {
   transform: translateY(1px);
-  filter: brightness(0.96);
 }
 
-.btn-outline {
+/* Cyan/Teal Secondary Outline Button */
+.btn-cosmic-teal {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
+  padding: 0.75rem 1.5rem;
   border-radius: 9999px;
   font-weight: 600;
-  color: var(--ink);
-  background: var(--vellum);
-  border: 1px solid var(--card-border-strong);
-  transition: all 150ms ease;
+  color: var(--accent-teal-light);
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid var(--border-cosmic-bright);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+  transition: all 200ms ease;
   cursor: pointer;
 }
 
-.btn-outline:hover {
-  background: var(--paper-deep);
+.btn-cosmic-teal:hover {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.3);
+  transform: translateY(-2px);
 }
 
-.rule {
+/* Glowing text utilities */
+.glow-teal {
+  text-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+}
+
+.glow-orange {
+  text-shadow: 0 0 12px rgba(249, 115, 22, 0.6);
+}
+
+.glow-gold {
+  text-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+}
+
+/* Custom Cosmic Divider */
+.rule-cosmic {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--ink-mute);
+  color: var(--text-muted);
 }
 
-.rule::before, .rule::after {
+.rule-cosmic::before, .rule-cosmic::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: linear-gradient(to right, transparent, var(--card-border-strong), transparent);
+  background: linear-gradient(to right, transparent, var(--border-cosmic-bright), transparent);
 }
 
 .rule-diamond {
   display: inline-block;
   width: 6px;
   height: 6px;
-  background: var(--saffron);
+  background: var(--accent-teal);
   transform: rotate(45deg);
+  box-shadow: 0 0 8px var(--accent-teal);
 }
 
-@keyframes pulse-ring {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(31, 95, 91, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(31, 95, 91, 0); }
+/* Pulse animation for live calls/status */
+@keyframes pulse-teal {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.5); }
+  50% { box-shadow: 0 0 0 10px rgba(6, 182, 212, 0); }
 }
 
-.pulse-ring {
-  animation: pulse-ring 2s ease-out infinite;
+.pulse-teal {
+  animation: pulse-teal 2s ease-out infinite;
 }
 
 .no-scrollbar::-webkit-scrollbar {

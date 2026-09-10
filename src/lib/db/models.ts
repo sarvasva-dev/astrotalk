@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 // ==========================================
 // 1. User Interface & Schema
 // ==========================================
-export interface IUser extends Document {
+export interface IUser extends Document<string> {
   displayName: string;
   phoneNumber?: string;
   gender: "male" | "female" | "other";
@@ -19,6 +19,7 @@ export interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>(
   {
+    _id: { type: String, required: true },
     displayName: { type: String, required: true, default: "Astro Seeker" },
     phoneNumber: { type: String },
     gender: { type: String, enum: ["male", "female", "other"], default: "other" },
@@ -26,8 +27,8 @@ const UserSchema = new Schema<IUser>(
     birthTime: { type: String, default: "11:55 PM" },
     birthTimeUnknown: { type: Boolean, default: false },
     birthPlace: { type: String, default: "New Delhi, Delhi, India" },
-    walletBalance: { type: Number, default: 150 }, // Welcome balance ₹150
-    aiCredits: { type: Number, default: 100 },     // Welcome AI credits 100
+    walletBalance: { type: Number, default: 10 }, // Welcome balance ₹10
+    aiCredits: { type: Number, default: 10 },     // Welcome AI credits 10
   },
   { timestamps: true }
 );
@@ -201,8 +202,8 @@ class MemoryStore {
       birthTime: "11:55 PM",
       birthTimeUnknown: false,
       birthPlace: "New Delhi, Delhi, India",
-      walletBalance: 150,
-      aiCredits: 100,
+      walletBalance: 10,
+      aiCredits: 10,
     });
   }
 
@@ -211,8 +212,8 @@ class MemoryStore {
       this.users.set(userId, {
         _id: userId,
         displayName: "Astro Seeker",
-        walletBalance: 150,
-        aiCredits: 100,
+        walletBalance: 10,
+        aiCredits: 10,
       });
     }
     return this.users.get(userId);

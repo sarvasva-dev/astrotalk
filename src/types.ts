@@ -209,6 +209,10 @@ export type AICreditProfile = {
 // Enterprise Multi-Page Navigation Route Definition
 export type PageRoute =
   | { page: "landing" }
+  | { page: "home" }
+  | { page: "archetype" }
+  | { page: "life-timeline" }
+  | { page: "remedies" }
   | { page: "consult"; category?: string }
   | { page: "astrologer-detail"; slug: string }
   | { page: "kundli" }

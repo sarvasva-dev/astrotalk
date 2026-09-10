@@ -15,6 +15,8 @@ import {
   memoryFallbackStore,
 } from "./src/lib/db/models";
 import { SarvamAIService } from "./src/lib/sarvam";
+import { routeLLMRequest } from "./src/lib/llm/router";
+import { quotaManager } from "./src/lib/llm/quotaManager";
 import {
   createRazorpayOrder,
   verifyRazorpaySignature,
@@ -48,10 +50,18 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "astroguru", time: new Date().toISOString() });
 });
 
+// Admin LLM Quota Monitoring endpoint
+app.get("/api/admin/llm/quota", (_req, res) => {
+  res.json({
+    status: "ok",
+    states: quotaManager.getAllStates(),
+  });
+});
+
 // Chat endpoint with AI Orchestrator & Evidence Architecture
 app.post("/api/chat", async (req, res) => {
   try {
-    const { messages, counsellor, profile, prunedFacts, matchedRules, isDeterministic, deterministicAnswer } = req.body;
+    const { messages, counsellor, profile, prunedFacts, matchedRules, isDeterministic, deterministicAnswer, providerHint } = req.body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: "Messages array required" });
@@ -110,59 +120,41 @@ Guidelines:
 5. Never be fatalistic or fearful; Vedic Jyotish is a lamp of hope.
 6. Do NOT output markdown tables, raw JSON, or robotic lists. Sound like a live, caring master on call/chat.`;
 
-    let replyText = "";
-    let provider = "Deterministic Engine";
-    let modelName = "gemini-3.8-flash";
-
-    // 1. Try Sarvam Vernacular LLM first if API key is provided
-    const sarvamResult = await SarvamAIService.chatCompletion([
-      { role: "system", content: systemInstruction },
-      ...messages.slice(-6).map((m: any) => ({
+    const llmResponse = await routeLLMRequest(
+      messages.slice(-8).map((m: any) => ({
         role: m.role === "assistant" ? "assistant" : "user",
         content: m.content,
       })),
-    ]);
-
-    if (sarvamResult) {
-      replyText = sarvamResult.content;
-      provider = sarvamResult.provider;
-      modelName = "sarvam-2b";
-    } else {
-      const ai = getAIClient();
-      if (!ai) {
-        // Offline fallback grounded in matched evidence
-        const clientName = profile?.displayName ? profile.displayName.split(" ")[0] : "ji";
-        const topRule = matchedRules?.[0];
-        const evidenceQuote = topRule ? ` शास्त्रीय ग्रंथ ${topRule.sourceText} के अनुसार ग्रह स्थिति शुभ फल देने में समर्थ है।` : "";
-        replyText = `नमस्ते ${clientName}! ${signature} आपके प्रश्न पर गणना अनुसार विचार किया।${evidenceQuote} धैर्य बनाए रखें, आने वाले समय में अनुकूलता बढ़ेगी। प्रतिदिन सूर्य को जल अर्घ्य दें।`;
-        provider = "Sarvam Synthesizer";
-        modelName = "sarvam-vernacular-offline";
-      } else {
-        const contents = messages.slice(-8).map((m: { role: string; content: string }) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content.slice(0, 1200) }],
-        }));
-
-        const response = await ai.models.generateContent({
-          model: "gemini-3.8-flash",
-          contents,
-          config: {
-            systemInstruction,
-            temperature: 0.72,
-            maxOutputTokens: 350,
-          },
-        });
-
-        replyText = response.text?.trim() || "Namaste. Graha aapke paksh mein hain, kripya apna prashna punah poochein.";
-        provider = "Gemini Deep Reasoning";
-        modelName = "gemini-3.8-flash";
+      {
+        taskType: 'chat_reply',
+        systemPrompt: systemInstruction,
+        temperature: 0.72,
+        maxTokens: 350,
+        providerHint: providerHint,
       }
-    }
+    );
 
-    // Asynchronously record message in database
+    const replyText = llmResponse.content;
+    const provider = llmResponse.provider;
+    const modelName = llmResponse.model;
+
+    // Asynchronously record message and deduct credits in database
     try {
       const userId = req.body.userId || "default_user";
       if (isDatabaseConnected()) {
+        const user = await UserModel.findById(userId);
+        if (user) {
+          const chatCost = 5;
+          if (user.walletBalance < chatCost) {
+            return res.status(402).json({
+              error: "Insufficient balance",
+              text: "Pranam! Aapke wallet mein balance kam hai. Kripya recharge karein aage baat karne ke liye.",
+            });
+          }
+          user.walletBalance -= chatCost;
+          await user.save();
+        }
+
         await ChatMessageModel.create({
           userId,
           counsellorSlug: counsellor?.id || "acharya",
@@ -417,8 +409,8 @@ app.get(["/api/user", "/api/user/:userId"], async (req, res) => {
           birthDate: "2005-12-21",
           birthTime: "11:55 PM",
           birthPlace: "New Delhi, Delhi, India",
-          walletBalance: 150,
-          aiCredits: 100,
+          walletBalance: 10,
+          aiCredits: 10,
         });
       }
       return res.json({ user, isDatabaseConnected: true });

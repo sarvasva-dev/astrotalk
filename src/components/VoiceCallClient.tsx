@@ -239,6 +239,7 @@ export default function VoiceCallClient({
             signature: counsellor.signature,
           },
           profile: userProfile,
+          providerHint: "groq",
         }),
       });
 
@@ -343,7 +344,7 @@ export default function VoiceCallClient({
   return (
     <div
       id="voice-call-screen"
-      className="fixed inset-0 z-50 flex flex-col justify-between bg-gradient-to-b from-[#1b1612] via-[#241c16] to-[#0f0c09] text-[#f6efdc] p-6 select-none"
+      className="fixed inset-0 h-[100dvh] w-full z-50 flex flex-col justify-between bg-gradient-to-b from-[#1b1612] via-[#241c16] to-[#0f0c09] text-[#f6efdc] p-6 select-none"
     >
       {/* Top Header */}
       <header className="flex items-center justify-between">

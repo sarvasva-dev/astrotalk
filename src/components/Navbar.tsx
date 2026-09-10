@@ -78,6 +78,15 @@ function ClerkAuthSection({ isClerkConfigured }: { isClerkConfigured?: boolean }
         <div className="flex items-center gap-1.5">
           <SignInButton mode="modal">
             <button
+              id="clerk-hidden-signin"
+              className="hidden"
+              type="button"
+            >
+              Hidden Sign In
+            </button>
+          </SignInButton>
+          <SignInButton mode="modal">
+            <button
               type="button"
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#f6efdc] hover:bg-[#ebd7be] text-[#3d342a] border border-[#e6d9b7] text-xs font-semibold transition-all cursor-pointer"
             >
@@ -137,10 +146,8 @@ export default function Navbar({
           onClick={() => onNavigate({ page: "landing" })}
           className="flex items-center gap-2.5 cursor-pointer select-none group shrink-0"
         >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#c8531c] to-[#e07a3e] p-0.5 shadow-sm">
-            <div className="w-full h-full rounded-full bg-[#fbf6e8] flex items-center justify-center">
-              <Sparkles size={18} className="text-[#c8531c]" />
-            </div>
+          <div className="w-10 h-10 rounded-full shadow-sm overflow-hidden flex-shrink-0 border-2 border-[#10243e] hover:border-[#06b6d4] transition-colors">
+            <img src="/logo.png" alt="AstroGuru Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
@@ -182,7 +189,9 @@ export default function Navbar({
         {/* User Kundli Profile, AI Orchestrator, Clerk Auth & Wallet Action */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Clerk Auth Section */}
-          <ClerkAuthSection isClerkConfigured={isClerkConfigured} />
+          <div className="hidden lg:block">
+            <ClerkAuthSection isClerkConfigured={isClerkConfigured} />
+          </div>
 
           {/* AI Orchestrator Trigger Button */}
           {onOpenOrchestrator && (
@@ -206,7 +215,7 @@ export default function Navbar({
             id="nav-profile-btn"
             type="button"
             onClick={() => onNavigate({ page: "profile" })}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors cursor-pointer ${
+            className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors cursor-pointer ${
               currentRoute.page === "profile"
                 ? "bg-[#c8531c] text-white border-[#5e2308]"
                 : "bg-[#f6efdc] border-[#e6d9b7] hover:border-[#c9b884] text-[#1b1612]"

@@ -69,6 +69,10 @@ export default function AiChatClient({
   const [creditProfile, setCreditProfile] = useState(AICreditManager.getProfile);
   const [whyModalData, setWhyModalData] = useState<WhyThisConclusionData | null>(null);
 
+  const [userMessageCount, setUserMessageCount] = useState(0);
+  const [messageQuota, setMessageQuota] = useState(5);
+  const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -82,31 +86,13 @@ export default function AiChatClient({
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
-  // Session timer & per-minute billing
+  // Session timer (Display only)
   useEffect(() => {
     const timer = setInterval(() => {
-      setSessionDuration((prev) => {
-        const next = prev + 1;
-        if (next > 0 && next % 60 === 0) {
-          const success = onDeductBalance(counsellor.pricePerMin);
-          if (!success) {
-            setMessages((m) => [
-              ...m,
-              {
-                id: `system-${Date.now()}`,
-                role: "assistant",
-                content: "Aapka wallet balance samaapt ho chuka hai. Kripya chat jaari rakhne ke liye wallet recharge karein.",
-                timestamp: Date.now(),
-              },
-            ]);
-          }
-        }
-        return next;
-      });
+      setSessionDuration((prev) => prev + 1);
     }, 1000);
-
     return () => clearInterval(timer);
-  }, [counsellor.pricePerMin, onDeductBalance]);
+  }, []);
 
   // Sarvam STT Voice Input with Browser SpeechRecognition fallback
   const toggleVoiceInput = async () => {
@@ -267,8 +253,8 @@ export default function AiChatClient({
     const content = (textToSend || input).trim();
     if (!content || isTyping) return;
 
-    if (walletBalance < counsellor.pricePerMin && sessionDuration > 30) {
-      onOpenWallet();
+    if (!onDeductBalance(5)) {
+      setShowPaymentPrompt(true);
       return;
     }
 
@@ -282,6 +268,7 @@ export default function AiChatClient({
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsTyping(true);
+    setUserMessageCount(prev => prev + 1);
 
     try {
       // Execute the AI Orchestrator Pipeline:
@@ -373,7 +360,7 @@ export default function AiChatClient({
   ];
 
   return (
-    <div id="ai-chat-view" className="flex flex-col h-full bg-[#f6efdc]">
+    <div id="ai-chat-view" className="relative flex flex-col h-full bg-[#f6efdc]">
       {/* Astrologer Chat Header */}
       <header className="shrink-0 bg-[#fbf6e8] border-b border-[#c9b884] p-3 px-4 shadow-xs z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
@@ -717,6 +704,45 @@ export default function AiChatClient({
         data={whyModalData}
         onClose={() => setWhyModalData(null)}
       />
+
+      {showPaymentPrompt && (
+        <div className="absolute inset-0 bg-[#1b1612]/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#fbf6e8] rounded-2xl p-6 max-w-sm w-full text-center shadow-xl border border-[#c9b884]">
+            <h3 className="font-display font-bold text-xl text-[#1b1612] mb-2">Free Messages Exhausted</h3>
+            <p className="text-sm text-[#786a55] mb-6">
+              You have used your {messageQuota} messages. Continue your chat by purchasing a pack of 10 messages for ₹5.
+            </p>
+            
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (walletBalance >= 5) {
+                    const success = onDeductBalance(5);
+                    if (success) {
+                      setMessageQuota(prev => prev + 10);
+                      setShowPaymentPrompt(false);
+                    }
+                  } else {
+                    onOpenWallet();
+                  }
+                }}
+                className="btn-cosmic-teal w-full py-3 text-sm font-bold flex items-center justify-center gap-2"
+              >
+                <Wallet size={16} />
+                Pay ₹5 for 10 Messages
+              </button>
+              <button
+                type="button"
+                onClick={onBack}
+                className="btn-outline w-full py-3 text-sm"
+              >
+                End Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
