@@ -7,6 +7,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { userId = "default_user", ...updates } = body;
 
+    const isComplete = Boolean(updates.birthDate && updates.birthPlace);
+    if (isComplete) {
+      updates.isProfileComplete = true;
+    }
+
     await dbConnect();
     if (isDbConnected()) {
       const user = await UserModel.findByIdAndUpdate(

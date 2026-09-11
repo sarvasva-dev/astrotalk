@@ -97,6 +97,7 @@ export function useUserSession() {
       const user = data.user;
 
       if (user) {
+        const isComplete = Boolean(user.birthDate && user.birthPlace && user.birthDate !== "2000-01-01" && user.birthDate !== "1998-05-15");
         const updatedSession: SessionData = {
           userId,
           displayName: user.displayName || fullName,
@@ -106,12 +107,13 @@ export function useUserSession() {
           activeTrial: user.activeTrial ?? { isActive: false, expiresAt: null },
           profile: {
             id: userId,
-            displayName: user.displayName || fullName,
-            birthDate: user.birthDate || "2000-01-01",
+            displayName: user.displayName || fullName || "",
+            birthDate: user.birthDate || "",
             birthTime: user.birthTime || "12:00",
-            birthTimeUnknown: user.birthTimeUnknown ?? true,
-            birthPlace: user.birthPlace || "India",
-            gender: user.gender || "other",
+            birthTimeUnknown: user.birthTimeUnknown ?? false,
+            birthPlace: user.birthPlace || "",
+            gender: user.gender || "male",
+            isProfileComplete: user.isProfileComplete ?? isComplete,
           },
           lastSynced: Date.now(),
         };

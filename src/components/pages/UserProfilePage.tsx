@@ -41,11 +41,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   const [activeTab, setActiveTab] = useState<"details" | "charts" | "history" | "ledger">(initialTab);
 
   // Profile Form state
-  const [displayName, setDisplayName] = useState(userProfile.displayName || "Astro Seeker");
+  const [displayName, setDisplayName] = useState(userProfile.displayName || "");
   const [gender, setGender] = useState<"male" | "female" | "other">(userProfile.gender || "male");
-  const [birthDate, setBirthDate] = useState(userProfile.birthDate || "1998-05-15");
-  const [birthTime, setBirthTime] = useState(userProfile.birthTime || "14:30");
-  const [birthPlace, setBirthPlace] = useState(userProfile.birthPlace || "New Delhi, India");
+  const [birthDate, setBirthDate] = useState(userProfile.birthDate || "");
+  const [birthTime, setBirthTime] = useState(userProfile.birthTime || "12:00");
+  const [birthPlace, setBirthPlace] = useState(userProfile.birthPlace || "");
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Saved Kundlis state

@@ -11,6 +11,7 @@ export interface IUser extends Document<string> {
   birthTime: string;
   birthTimeUnknown: boolean;
   birthPlace: string;
+  isProfileComplete?: boolean;
   freeCredits: number;
   paidCredits: number;
   claimStreak: number;
@@ -26,13 +27,14 @@ export interface IUser extends Document<string> {
 const UserSchema = new Schema<IUser>(
   {
     _id: { type: String, required: true },
-    displayName: { type: String, required: true, default: "Astro Seeker" },
+    displayName: { type: String, required: true, default: "" },
     phoneNumber: { type: String },
-    gender: { type: String, enum: ["male", "female", "other"], default: "other" },
-    birthDate: { type: String, default: "2005-12-21" },
-    birthTime: { type: String, default: "11:55 PM" },
+    gender: { type: String, enum: ["male", "female", "other"], default: "male" },
+    birthDate: { type: String, default: "" },
+    birthTime: { type: String, default: "12:00" },
     birthTimeUnknown: { type: Boolean, default: false },
-    birthPlace: { type: String, default: "New Delhi, Delhi, India" },
+    birthPlace: { type: String, default: "" },
+    isProfileComplete: { type: Boolean, default: false },
     freeCredits: { type: Number, default: 150 }, // Welcome bonus
     paidCredits: { type: Number, default: 0 },
     claimStreak: { type: Number, default: 0 },

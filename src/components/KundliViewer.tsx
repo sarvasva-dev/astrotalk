@@ -54,16 +54,20 @@ export default function KundliViewer({
 
   useEffect(() => {
     async function fetchKundli() {
+      if (!userProfile.birthDate) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const res = await fetch("/api/kundli", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: userProfile.displayName || "Client",
-            dob: userProfile.birthDate || "1998-05-15",
+            name: userProfile.displayName || "Seeker",
+            dob: userProfile.birthDate,
             tob: userProfile.birthTime || "12:00 PM",
-            pob: userProfile.birthPlace || "New Delhi, India",
+            pob: userProfile.birthPlace || "India",
           }),
         });
         const data = await res.json();
@@ -151,6 +155,30 @@ export default function KundliViewer({
     if (!kundli) return;
     setSelectedConclusion(generateDashaConclusion(kundli));
   };
+
+  if (!userProfile.birthDate) {
+    return (
+      <div id="kundli-viewer-page" className="max-w-xl mx-auto p-6 my-12 text-center card-paper border border-[#c9b884] shadow-2xl">
+        <div className="w-16 h-16 rounded-full bg-[#fae6cf] text-[#c8531c] flex items-center justify-center mx-auto mb-4 border border-[#e6d9b7]">
+          <Sparkles size={32} />
+        </div>
+        <h2 className="font-display text-2xl font-bold text-[#1b1612] mb-2">
+          Enter Your Birth Details
+        </h2>
+        <p className="text-sm text-[#786a55] mb-6 leading-relaxed">
+          To calculate your accurate Janma Kundli, Lagna, Moon Sign, and Vimshottari Dasha transits, please set your Date of Birth, Time, and Birth Place.
+        </p>
+        <button
+          type="button"
+          onClick={onEditProfile}
+          className="btn-saffron text-sm px-8 py-3 w-full flex items-center justify-center gap-2"
+        >
+          <Calendar size={18} />
+          Complete Birth Details Now
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div id="kundli-viewer-page" className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">

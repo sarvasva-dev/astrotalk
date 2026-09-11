@@ -31,18 +31,19 @@ export async function POST(request: NextRequest) {
         isNew = true;
         user = await UserModel.create({
           _id: userId,
-          displayName: displayName || "Astro Seeker",
-          gender: "other",
-          birthDate: "2000-01-01",
+          displayName: displayName || "",
+          gender: "male",
+          birthDate: "",
           birthTime: "12:00",
-          birthTimeUnknown: true,
-          birthPlace: "India",
+          birthTimeUnknown: false,
+          birthPlace: "",
+          isProfileComplete: false,
           freeCredits: 150,
           paidCredits: 0,
           claimStreak: 0,
           lastClaimDate: null,
         });
-      } else if (displayName && user.displayName === "Astro Seeker") {
+      } else if (displayName && (!user.displayName || user.displayName === "Astro Seeker")) {
         user.displayName = displayName;
         await user.save();
       }

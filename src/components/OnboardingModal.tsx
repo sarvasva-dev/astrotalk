@@ -15,20 +15,21 @@ export default function OnboardingModal({
 }: OnboardingModalProps) {
   const [displayName, setDisplayName] = useState(initialProfile.displayName || "");
   const [gender, setGender] = useState<"male" | "female" | "other" | null>(initialProfile.gender || "male");
-  const [birthDate, setBirthDate] = useState(initialProfile.birthDate || "1998-05-15");
+  const [birthDate, setBirthDate] = useState(initialProfile.birthDate || "");
   const [birthTime, setBirthTime] = useState(initialProfile.birthTime || "12:00");
   const [birthTimeUnknown, setBirthTimeUnknown] = useState(initialProfile.birthTimeUnknown || false);
-  const [birthPlace, setBirthPlace] = useState(initialProfile.birthPlace || "New Delhi, India");
+  const [birthPlace, setBirthPlace] = useState(initialProfile.birthPlace || "");
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onSave({
-      displayName: displayName.trim() || "Devotee",
+      displayName: displayName.trim() || "Seeker",
       gender,
       birthDate,
       birthTime,
       birthTimeUnknown,
-      birthPlace: birthPlace.trim() || "New Delhi, India",
+      birthPlace: birthPlace.trim() || "Varanasi, UP, India",
+      isProfileComplete: true,
     });
     onClose();
   };

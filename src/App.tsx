@@ -68,12 +68,13 @@ import { useUser, SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
 const STORAGE_PROFILE_KEY = "astroguru_user_profile";
 
 const DEFAULT_PROFILE: UserProfile = {
-  displayName: "Rahul Sharma",
+  displayName: "",
   gender: "male",
-  birthDate: "1998-05-15",
-  birthTime: "10:30",
+  birthDate: "",
+  birthTime: "12:00",
   birthTimeUnknown: false,
-  birthPlace: "New Delhi, India",
+  birthPlace: "",
+  isProfileComplete: false,
 };
 
 interface AppProps {
@@ -84,7 +85,7 @@ function ClerkDataSyncer({ onUserLoaded }: { onUserLoaded: (userId: string, full
   const { isLoaded, isSignedIn, user } = useUser();
   useEffect(() => {
     if (isLoaded && isSignedIn && user) {
-      onUserLoaded(user.id, user.fullName || "Astro Seeker");
+      onUserLoaded(user.id, user.fullName || "");
     }
   }, [isLoaded, isSignedIn, user, onUserLoaded]);
   return null;
@@ -187,18 +188,29 @@ export default function App({ isClerkConfigured = false }: AppProps) {
   const [kundli, setKundli] = useState<KundliData | null>(null);
   const [creditProfile, setCreditProfile] = useState(AICreditManager.getProfile);
 
+  // Auto-prompt onboarding modal if birth details are missing
+  useEffect(() => {
+    if (!userProfile.birthDate || !userProfile.isProfileComplete) {
+      const timer = setTimeout(() => {
+        setIsOnboardingOpen(true);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [userProfile.birthDate, userProfile.isProfileComplete]);
+
   // Sync Kundli data with birth chart profile
   useEffect(() => {
     async function loadKundli() {
+      if (!userProfile.birthDate) return;
       try {
         const res = await fetch("/api/kundli", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: userProfile.displayName || "Client",
-            dob: userProfile.birthDate || "1998-05-15",
+            name: userProfile.displayName || "Seeker",
+            dob: userProfile.birthDate,
             tob: userProfile.birthTime || "12:00 PM",
-            pob: userProfile.birthPlace || "New Delhi, India",
+            pob: userProfile.birthPlace || "India",
           }),
         });
         const data = await res.json();
@@ -593,7 +605,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
         {currentRoute.page === "kundli" && (
           <KundliViewer
             userProfile={userProfile}
-            onEditProfile={() => handleNavigate({ page: "profile" })}
+            onEditProfile={() => setIsOnboardingOpen(true)}
             onConsultChart={() => handleNavigate({ page: "consult" })}
             onLoadGoldenFixture={handleLoadGoldenFixture}
           />
