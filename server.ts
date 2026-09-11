@@ -3,7 +3,6 @@ import express from "express";
 import session from "express-session";
 import MongoStore from "connect-mongo";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import multer from "multer";
 import rateLimit from "express-rate-limit";
 import { GoogleGenAI } from "@google/genai";
@@ -32,6 +31,19 @@ app.set("trust proxy", 1);
 const PORT = 3000;
 
 app.use(express.json());
+
+// Normalize req.url so Express routes match whether Vercel passes /api/kundli, /kundli, or /api/index.ts/kundli
+app.use((req, _res, next) => {
+  if (req.url) {
+    if (req.url.startsWith("/api/index.ts")) {
+      req.url = req.url.replace("/api/index.ts", "/api") || "/api";
+    }
+    if (!req.url.startsWith("/api")) {
+      req.url = "/api" + (req.url.startsWith("/") ? req.url : "/" + req.url);
+    }
+  }
+  next();
+});
 
 // ==========================================
 // In-Memory User Session Cache (5 min TTL)
@@ -969,6 +981,7 @@ connectToDatabase().catch(console.error);
 if (process.env.VERCEL !== "1") {
   async function startServer() {
     if (process.env.NODE_ENV !== "production") {
+      const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
