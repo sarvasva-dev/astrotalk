@@ -38,9 +38,14 @@ export async function callSarvam(
 
   const data = await response.json();
   const latencyMs = Date.now() - startTime;
+  const content = data.choices?.[0]?.message?.content || data.message || '';
+
+  if (!content || !content.trim()) {
+    throw new Error('Sarvam API returned empty text response');
+  }
 
   return {
-    content: data.choices?.[0]?.message?.content || '',
+    content,
     provider: 'sarvam',
     model,
     latencyMs,

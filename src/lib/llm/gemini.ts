@@ -11,7 +11,7 @@ export async function callGemini(
 
   const startTime = Date.now();
   // Use a valid current Gemini model
-  const model = 'gemini-1.5-flash';
+  const model = 'gemini-2.0-flash';
 
   // Format system prompt and contents for Gemini REST API
   const contents = messages.map((msg) => ({

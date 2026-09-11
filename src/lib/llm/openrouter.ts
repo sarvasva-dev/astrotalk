@@ -12,8 +12,8 @@ export async function callOpenRouter(
   const startTime = Date.now();
   // Updated to currently available OpenRouter free models (Sep 2026)
   const model = options.taskType === 'structured_json'
-    ? 'nvidia/nemotron-3-ultra-550b-a55b:free'   // NVIDIA 550B for structured tasks
-    : 'google/gemma-4-31b-it:free';              // Google Gemma 4 31B for general chat
+    ? 'meta-llama/llama-3.3-70b-instruct:free'
+    : 'meta-llama/llama-3.3-70b-instruct:free';
 
   const formattedMessages = options.systemPrompt 
     ? [{ role: 'system', content: options.systemPrompt }, ...messages]

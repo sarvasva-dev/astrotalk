@@ -12,8 +12,8 @@ export async function callGroq(
   const startTime = Date.now();
   // Updated to currently available Groq models
   const model = options.taskType === 'deep_reasoning' 
-    ? 'llama3-70b-8192'
-    : 'llama3-8b-8192';
+    ? 'llama-3.3-70b-versatile'
+    : 'llama-3.3-70b-versatile';
 
   const formattedMessages = options.systemPrompt 
     ? [{ role: 'system', content: options.systemPrompt }, ...messages]

@@ -39,8 +39,11 @@ export async function routeLLMRequest(
     try {
       console.log(`[LLMRouter] Attempting forced provider: ${providerId}`);
       const response = await handler(messages, options);
-      quotaManager.recordSuccess(providerId);
-      return response;
+      if (response && response.content && response.content.trim()) {
+        quotaManager.recordSuccess(providerId);
+        return response;
+      }
+      console.warn(`[LLMRouter] Forced provider ${providerId} returned empty content, trying fallbacks...`);
     } catch (err: any) {
       console.warn(`[LLMRouter] Forced provider ${providerId} failed: ${err?.message || err}`);
       quotaManager.recordError(providerId, err?.message || String(err));
@@ -63,9 +66,11 @@ export async function routeLLMRequest(
     try {
       console.log(`[LLMRouter] Attempting provider: ${providerId} for task: ${taskType}`);
       const response = await handler(messages, options);
-      quotaManager.recordSuccess(providerId);
-      console.log(`[LLMRouter] Success via ${providerId} (${response.latencyMs}ms)`);
-      return response;
+      if (response && response.content && response.content.trim()) {
+        quotaManager.recordSuccess(providerId);
+        console.log(`[LLMRouter] Success via ${providerId} (${response.latencyMs}ms)`);
+        return response;
+      }
     } catch (err: any) {
       const errorMsg = err?.message || String(err);
       console.warn(`[LLMRouter] Provider ${providerId} failed: ${errorMsg}`);
