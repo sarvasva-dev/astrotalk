@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import session from "express-session";
+import MongoStore from "connect-mongo";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import multer from "multer";
@@ -29,6 +31,68 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// ==========================================
+// In-Memory User Session Cache (5 min TTL)
+// ==========================================
+const userSessionCache = new Map<string, { data: any; cachedAt: number }>();
+const SESSION_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCachedUser(userId: string) {
+  const entry = userSessionCache.get(userId);
+  if (entry && Date.now() - entry.cachedAt < SESSION_CACHE_TTL) {
+    return entry.data;
+  }
+  return null;
+}
+function setCachedUser(userId: string, data: any) {
+  userSessionCache.set(userId, { data, cachedAt: Date.now() });
+}
+function invalidateCachedUser(userId: string) {
+  userSessionCache.delete(userId);
+}
+
+// ==========================================
+// Session Middleware Setup
+// ==========================================
+const SESSION_SECRET = process.env.SESSION_SECRET || "astroguru-dev-secret-change-in-prod";
+
+function setupSession() {
+  const mongoUri = process.env.MONGODB_URI;
+  const sessionConfig: session.SessionOptions = {
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    },
+  };
+
+  // Use MongoDB session store if DB is available, else use in-memory
+  if (mongoUri) {
+    try {
+      sessionConfig.store = MongoStore.create({
+        mongoUrl: mongoUri,
+        collectionName: "sessions",
+        ttl: 7 * 24 * 60 * 60, // 7 days in seconds
+        autoRemove: "native",
+        touchAfter: 24 * 3600, // only update session once per 24h unless data changes
+      });
+      console.log("[Session] Using MongoDB session store");
+    } catch (e) {
+      console.warn("[Session] MongoDB store failed, falling back to in-memory");
+    }
+  } else {
+    console.log("[Session] Using in-memory session store (dev mode)");
+  }
+
+  return session(sessionConfig);
+}
+
+app.use(setupSession());
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -243,6 +307,7 @@ Guidelines:
             });
           }
           await user.save();
+          invalidateCachedUser(userId); // refresh cache after deduction
         }
 
         await ChatMessageModel.create({
@@ -485,9 +550,16 @@ app.post("/api/tts", async (req, res) => {
 // User Profile & Wallet Balance Endpoints
 // ==========================================
 
+// GET /api/user/:userId — fetch user profile (with in-memory cache)
 app.get(["/api/user", "/api/user/:userId"], async (req, res) => {
   try {
     const userId = req.params.userId || (req.query.userId as string) || "default_user";
+
+    // 1. Check in-memory session cache first
+    const cached = getCachedUser(userId);
+    if (cached) {
+      return res.json({ user: cached, isDatabaseConnected: isDatabaseConnected(), fromCache: true });
+    }
 
     if (isDatabaseConnected()) {
       let user = await UserModel.findById(userId);
@@ -502,12 +574,15 @@ app.get(["/api/user", "/api/user/:userId"], async (req, res) => {
           paidCredits: 0,
         });
       }
-      return res.json({ user, isDatabaseConnected: true });
+      const userObj = user.toObject();
+      setCachedUser(userId, userObj);
+      return res.json({ user: userObj, isDatabaseConnected: true, fromCache: false });
     }
 
     // Fallback store
     const user = memoryFallbackStore.getUser(userId);
-    return res.json({ user, isDatabaseConnected: false });
+    setCachedUser(userId, user);
+    return res.json({ user, isDatabaseConnected: false, fromCache: false });
   } catch (err: any) {
     console.error("User fetch error:", err);
     const user = memoryFallbackStore.getUser("default_user");
@@ -515,6 +590,64 @@ app.get(["/api/user", "/api/user/:userId"], async (req, res) => {
   }
 });
 
+// POST /api/user/sync — Clerk login upsert: creates user if new, returns existing data
+// This is the MAIN endpoint called on every Clerk login/session resume
+app.post("/api/user/sync", async (req, res) => {
+  try {
+    const { userId, displayName, email } = req.body;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+
+    // Attach userId to express session for server-side auth
+    (req.session as any).userId = userId;
+    (req.session as any).displayName = displayName;
+
+    // Check in-memory cache first (avoids DB on fast re-renders)
+    const cached = getCachedUser(userId);
+    if (cached) {
+      return res.json({ user: cached, isNew: false, fromCache: true });
+    }
+
+    if (isDatabaseConnected()) {
+      // Upsert: create if not exists, preserve existing credits
+      let user = await UserModel.findById(userId);
+      let isNew = false;
+      if (!user) {
+        isNew = true;
+        user = await UserModel.create({
+          _id: userId,
+          displayName: displayName || "Astro Seeker",
+          gender: "other",
+          birthDate: "2000-01-01",
+          birthTime: "12:00",
+          birthTimeUnknown: true,
+          birthPlace: "India",
+          freeCredits: 150, // Welcome bonus for new users only
+          paidCredits: 0,
+          claimStreak: 0,
+          lastClaimDate: null,
+        });
+      } else if (displayName && user.displayName === "Astro Seeker") {
+        // Update name only if it's still the default
+        user.displayName = displayName;
+        await user.save();
+      }
+      const userObj = user.toObject();
+      setCachedUser(userId, userObj);
+      return res.json({ user: userObj, isNew, fromCache: false });
+    }
+
+    // Fallback store
+    const user = memoryFallbackStore.getUser(userId);
+    if (displayName) user.displayName = displayName;
+    setCachedUser(userId, user);
+    return res.json({ user, isNew: false, fromCache: false });
+  } catch (err: any) {
+    console.error("[sync] User sync error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/user — update user profile fields (invalidates cache)
 app.post("/api/user", async (req, res) => {
   try {
     const { userId = "default_user", ...updates } = req.body;
@@ -525,11 +658,13 @@ app.post("/api/user", async (req, res) => {
         { $set: updates },
         { new: true, upsert: true }
       );
+      invalidateCachedUser(userId); // force fresh fetch next time
       return res.json({ success: true, user });
     }
 
     const user = memoryFallbackStore.getUser(userId);
     Object.assign(user, updates);
+    invalidateCachedUser(userId);
     return res.json({ success: true, user });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

@@ -48,6 +48,7 @@ import OnboardingModal from "./components/OnboardingModal";
 import OrchestratorHUD from "./components/OrchestratorHUD";
 import { AICreditManager } from "./lib/orchestrator/creditManager";
 import { getCurrentRoute, navigateTo, triggerAuthSignIn } from "./lib/router";
+import { useUserSession } from "./hooks/useUserSession";
 
 // Pages & Components
 import { StarCanvas } from "./components/StarCanvas";
@@ -65,7 +66,6 @@ import { SEOArticleHubPage } from "./components/pages/SEOArticleHubPage";
 import { useUser, SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
 
 const STORAGE_PROFILE_KEY = "astroguru_user_profile";
-const STORAGE_WALLET_KEY = "astroguru_wallet_balance";
 
 const DEFAULT_PROFILE: UserProfile = {
   displayName: "Rahul Sharma",
@@ -119,21 +119,38 @@ export default function App({ isClerkConfigured = false }: AppProps) {
     navigateTo(route);
   };
 
-  // Persistence state
-  const [clerkUserId, setClerkUserId] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+  // ─── Session (localStorage-backed, Clerk-synced) ────────────────────────────
+  const {
+    userId: clerkUserId,
+    freeCredits,
+    paidCredits,
+    claimStreak,
+    activeTrial,
+    profile: sessionProfile,
+    setFreeCredits,
+    setPaidCredits,
+    setClaimStreak,
+    setActiveTrial,
+    updateProfile,
+    syncWithClerk,
+    forceSync,
+  } = useUserSession();
+
+  // Build UserProfile from session (merge with localStorage legacy profile)
+  const [localProfile, setLocalProfile] = useState<UserProfile>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_PROFILE_KEY);
-      return saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+      return saved ? { ...DEFAULT_PROFILE, ...JSON.parse(saved) } : DEFAULT_PROFILE;
     } catch {
       return DEFAULT_PROFILE;
     }
   });
 
-  const [freeCredits, setFreeCredits] = useState<number>(150);
-  const [paidCredits, setPaidCredits] = useState<number>(0);
-  const [claimStreak, setClaimStreak] = useState<number>(0);
-  const [activeTrial, setActiveTrial] = useState<{isActive: boolean, expiresAt: string | null}>({ isActive: false, expiresAt: null });
+  // Merge: sessionProfile (from DB sync) takes priority over localProfile
+  const userProfile: UserProfile = {
+    ...localProfile,
+    ...(sessionProfile && sessionProfile.birthDate ? sessionProfile : {}),
+  };
 
   const requireAuth = (callback: () => void) => {
     if (isClerkConfigured && !clerkUserId) {
@@ -144,32 +161,9 @@ export default function App({ isClerkConfigured = false }: AppProps) {
     callback();
   };
 
-
+  // Clerk syncer callback — uses the hook to sync
   const handleClerkUserLoaded = (userId: string, fullName: string) => {
-    if (clerkUserId === userId) return; // already loaded
-    setClerkUserId(userId);
-    // Fetch from backend
-    fetch(`/api/user/${userId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.user) {
-          setFreeCredits(data.user.freeCredits || 0);
-          setPaidCredits(data.user.paidCredits || 0);
-          setClaimStreak(data.user.claimStreak || 0);
-          if (data.user.activeTrial) {
-            setActiveTrial(data.user.activeTrial);
-          }
-          setUserProfile((prev) => ({
-            ...prev,
-            id: userId,
-            displayName: data.user.displayName || fullName,
-            birthDate: data.user.birthDate || "1998-05-15",
-            birthTime: data.user.birthTime || "12:00",
-            birthPlace: data.user.birthPlace || "New Delhi, India"
-          }));
-        }
-      })
-      .catch(err => console.error("Failed to fetch user data:", err));
+    syncWithClerk(userId, fullName);
   };
 
   // Consult filtering state
@@ -216,14 +210,14 @@ export default function App({ isClerkConfigured = false }: AppProps) {
     loadKundli();
   }, [userProfile]);
 
-  // Sync to local storage
+  // Profile persistence — handled by useUserSession hook, but we still sync localProfile
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(userProfile));
+      localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(localProfile));
     } catch (e) {
       console.error(e);
     }
-  }, [userProfile]);
+  }, [localProfile]);
 
   // Wallet operations
   const handleRecharge = (amount: number, bonus: number, isTrial: boolean = false) => {
@@ -232,6 +226,8 @@ export default function App({ isClerkConfigured = false }: AppProps) {
     } else {
       setPaidCredits((prev) => prev + amount + bonus);
     }
+    // Force a fresh sync from DB after recharge so balance is confirmed
+    setTimeout(() => forceSync(), 1500);
   };
 
   const handleDeductChat = (): boolean => {
@@ -300,7 +296,8 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       birthTimeUnknown: false,
       birthPlace: "Delhi, India",
     };
-    setUserProfile(goldenProfile);
+    setLocalProfile(goldenProfile);
+    updateProfile(goldenProfile);
     try {
       localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(goldenProfile));
     } catch (e) {
@@ -470,7 +467,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
                   userProfile={userProfile}
                   freeCredits={freeCredits}
                   paidCredits={paidCredits}
-                  onUpdateProfile={(up) => setUserProfile(up)}
+                  onUpdateProfile={(up) => { setLocalProfile(up); updateProfile(up); }}
                   onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
                   onNavigate={handleNavigate}
                 />
@@ -494,7 +491,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
               userProfile={userProfile}
               freeCredits={freeCredits}
               paidCredits={paidCredits}
-              onUpdateProfile={(up) => setUserProfile(up)}
+              onUpdateProfile={(up) => { setLocalProfile(up); updateProfile(up); }}
               onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
               onNavigate={handleNavigate}
             />
@@ -662,7 +659,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
         <OnboardingModal
           initialProfile={userProfile}
           onClose={() => setIsOnboardingOpen(false)}
-          onSave={(updated) => setUserProfile(updated)}
+          onSave={(updated) => { setLocalProfile(updated); updateProfile(updated); }}
         />
       )}
 
