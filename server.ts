@@ -3,6 +3,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import multer from "multer";
+import rateLimit from "express-rate-limit";
 import { GoogleGenAI } from "@google/genai";
 import { calculateVedicChartV1, runGoldenTestSuite } from "./src/lib/vedicEngine/calculationEngine";
 import { connectToDatabase, isDatabaseConnected } from "./src/lib/db/connect";
@@ -28,6 +29,22 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests from this IP, please try again after 15 minutes" }
+});
+
+const actionLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 15, // 15 req/min for actions like chat/calls
+  message: { error: "Action rate limit exceeded, please slow down" }
+});
+
+app.use("/api/", apiLimiter);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -58,8 +75,56 @@ app.get("/api/admin/llm/quota", (_req, res) => {
   });
 });
 
+// Removed duplicate User Profile Endpoint at top, using the unified one below
+
+// Daily Streak Claim Endpoint
+app.post("/api/wallet/claim", actionLimiter, async (req, res) => {
+  try {
+    if (!isDatabaseConnected()) return res.status(503).json({ error: "DB down" });
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: "User ID required" });
+    
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (user.lastClaimDate === todayStr) {
+      return res.status(400).json({ error: "Already claimed today" });
+    }
+
+    // Check if streak is broken (did not claim yesterday)
+    let yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    if (user.lastClaimDate === yesterdayStr) {
+      user.claimStreak += 1;
+    } else {
+      user.claimStreak = 1; // broken or first time
+    }
+
+    user.lastClaimDate = todayStr;
+    const isDay7 = user.claimStreak % 7 === 0;
+    const bonus = isDay7 ? 20 : 5;
+    
+    user.freeCredits += bonus;
+    await user.save();
+    
+    res.json({ 
+      success: true, 
+      added: bonus, 
+      newTotal: user.freeCredits, 
+      streak: user.claimStreak,
+      isDay7 
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Claim failed" });
+  }
+});
+
 // Chat endpoint with AI Orchestrator & Evidence Architecture
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", actionLimiter, async (req, res) => {
   try {
     const { messages, counsellor, profile, prunedFacts, matchedRules, isDeterministic, deterministicAnswer, providerHint } = req.body;
 
@@ -144,14 +209,39 @@ Guidelines:
       if (isDatabaseConnected()) {
         const user = await UserModel.findById(userId);
         if (user) {
-          const chatCost = 5;
-          if (user.walletBalance < chatCost) {
+          const chatCost = 25; // 25 credits per chat as requested
+          let canChat = false;
+          let usedFree = false;
+
+          // 1. Check 5-hour trial pack
+          if (user.activeTrial && user.activeTrial.isActive && user.activeTrial.expiresAt) {
+            const now = new Date();
+            if (now < new Date(user.activeTrial.expiresAt)) {
+              canChat = true;
+            } else {
+              user.activeTrial.isActive = false; // Expired
+            }
+          }
+
+          // 2. Check Free Credits
+          if (!canChat && user.freeCredits >= chatCost) {
+            user.freeCredits -= chatCost;
+            canChat = true;
+            usedFree = true;
+          }
+
+          // 3. Check Paid Credits
+          if (!canChat && user.paidCredits >= chatCost) {
+            user.paidCredits -= chatCost;
+            canChat = true;
+          }
+
+          if (!canChat) {
             return res.status(402).json({
               error: "Insufficient balance",
-              text: "Pranam! Aapke wallet mein balance kam hai. Kripya recharge karein aage baat karne ke liye.",
+              text: "Pranam! Aapke paas credits kam hain. Kripya recharge karein ya trial pack lein.",
             });
           }
-          user.walletBalance -= chatCost;
           await user.save();
         }
 
@@ -409,7 +499,8 @@ app.get(["/api/user", "/api/user/:userId"], async (req, res) => {
           birthDate: "2005-12-21",
           birthTime: "11:55 PM",
           birthPlace: "New Delhi, Delhi, India",
-          walletBalance: 10,
+          freeCredits: 150,
+          paidCredits: 0,
           aiCredits: 10,
         });
       }
@@ -459,7 +550,7 @@ app.get("/api/payments/packs", (_req, res) => {
 // Create Razorpay Order
 app.post("/api/payments/create-order", async (req, res) => {
   try {
-    const { amount, userId = "default_user", bonus = 0 } = req.body;
+    const { amount, userId = "default_user", bonus = 0, isTrial = false } = req.body;
 
     if (!amount || amount < 10) {
       return res.status(400).json({ error: "Invalid recharge amount" });
@@ -468,7 +559,7 @@ app.post("/api/payments/create-order", async (req, res) => {
     const orderData = await createRazorpayOrder({
       amountInRupees: amount,
       receipt: `rcpt_${Date.now()}_${userId.slice(0, 6)}`,
-      notes: { userId, bonus: String(bonus) },
+      notes: { userId, bonus: String(bonus), isTrial: String(isTrial) },
     });
 
     // Record pending transaction
@@ -500,6 +591,7 @@ app.post("/api/payments/verify", async (req, res) => {
       userId = "default_user",
       amount,
       bonus = 0,
+      isTrial = false,
     } = req.body;
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
@@ -537,21 +629,42 @@ app.post("/api/payments/verify", async (req, res) => {
         { upsert: true }
       );
 
-      const user = await UserModel.findByIdAndUpdate(
-        userId,
-        { $inc: { walletBalance: totalCredit } },
-        { new: true, upsert: true }
-      );
-      updatedBalance = user.walletBalance;
+      if (isTrial) {
+        const expiresAt = new Date(Date.now() + 5 * 60 * 60 * 1000); // 5 hours from now
+        const user = await UserModel.findByIdAndUpdate(
+          userId,
+          { $set: { "activeTrial.isActive": true, "activeTrial.expiresAt": expiresAt } },
+          { new: true, upsert: true }
+        );
+        updatedBalance = user.paidCredits;
+      } else {
+        const user = await UserModel.findByIdAndUpdate(
+          userId,
+          { $inc: { paidCredits: totalCredit } },
+          { new: true, upsert: true }
+        );
+        updatedBalance = user.paidCredits;
+      }
     } else {
-      updatedBalance = memoryFallbackStore.updateWallet(userId, totalCredit);
+      if (!isTrial) {
+        updatedBalance = memoryFallbackStore.updateWallet(userId, totalCredit);
+      }
+    }
+
+    if (isTrial) {
+      return res.json({
+        success: true,
+        message: `5-Hour Free Chat Pass activated successfully!`,
+        isTrialActivated: true,
+        newPaidCredits: updatedBalance,
+      });
     }
 
     return res.json({
       success: true,
-      message: `₹${totalCredit} successfully credited to your wallet!`,
+      message: `₹${totalCredit} worth of Paid Credits added to your wallet!`,
       creditedAmount: totalCredit,
-      newBalance: updatedBalance,
+      newPaidCredits: updatedBalance,
     });
   } catch (err: any) {
     console.error("Verify payment error:", err);
@@ -587,7 +700,7 @@ app.post("/api/payments/webhook", async (req, res) => {
 // Consultation Call Session & Billing
 // ==========================================
 
-app.post("/api/call/start", async (req, res) => {
+app.post("/api/call/start", actionLimiter, async (req, res) => {
   try {
     const { userId = "default_user", counsellorSlug = "acharya", ratePerMinute = 25 } = req.body;
 
@@ -617,17 +730,18 @@ app.post("/api/call/deduct", async (req, res) => {
     let remainingBalance = 0;
     if (isDatabaseConnected()) {
       const user = await UserModel.findById(userId);
-      if (!user || user.walletBalance < perMinuteCost) {
+      // Audio calls ONLY use paidCredits
+      if (!user || user.paidCredits < perMinuteCost) {
         return res.json({
           success: false,
           insufficientBalance: true,
-          remainingBalance: user?.walletBalance || 0,
+          remainingBalance: user?.paidCredits || 0,
         });
       }
 
-      user.walletBalance -= perMinuteCost;
+      user.paidCredits -= perMinuteCost;
       await user.save();
-      remainingBalance = user.walletBalance;
+      remainingBalance = user.paidCredits;
 
       if (sessionId) {
         await CallSessionModel.findByIdAndUpdate(sessionId, {
@@ -636,15 +750,15 @@ app.post("/api/call/deduct", async (req, res) => {
       }
     } else {
       const user = memoryFallbackStore.getUser(userId);
-      if (user.walletBalance < perMinuteCost) {
+      if ((user.paidCredits || 0) < perMinuteCost) {
         return res.json({
           success: false,
           insufficientBalance: true,
-          remainingBalance: user.walletBalance,
+          remainingBalance: user.paidCredits || 0,
         });
       }
-      user.walletBalance -= perMinuteCost;
-      remainingBalance = user.walletBalance;
+      user.paidCredits = (user.paidCredits || 0) - perMinuteCost;
+      remainingBalance = user.paidCredits;
     }
 
     return res.json({

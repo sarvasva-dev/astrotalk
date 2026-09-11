@@ -31,10 +31,11 @@ interface AiChatClientProps {
   counsellor: Counsellor;
   userProfile: UserProfile;
   kundli: KundliData | null;
-  walletBalance: number;
+  freeCredits: number;
+  paidCredits: number;
   onBack: () => void;
-  onStartCall: (c: Counsellor) => void;
-  onDeductBalance: (amount: number) => boolean;
+  onStartCall: (counsellor: Counsellor) => void;
+  onDeductChat: () => boolean;
   onOpenWallet: () => void;
   onOpenOrchestrator: (trace?: OrchestratorTrace) => void;
 }
@@ -43,10 +44,11 @@ export default function AiChatClient({
   counsellor,
   userProfile,
   kundli,
-  walletBalance,
+  freeCredits,
+  paidCredits,
   onBack,
   onStartCall,
-  onDeductBalance,
+  onDeductChat,
   onOpenWallet,
   onOpenOrchestrator,
 }: AiChatClientProps) {
@@ -253,7 +255,8 @@ export default function AiChatClient({
     const content = (textToSend || input).trim();
     if (!content || isTyping) return;
 
-    if (!onDeductBalance(5)) {
+    // Deduct credit for this message
+    if (!onDeductChat()) {
       setShowPaymentPrompt(true);
       return;
     }
@@ -428,7 +431,7 @@ export default function AiChatClient({
               className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#fae6cf] border border-[#f3a76d] text-xs font-semibold text-[#5e2308] hover:bg-[#f3a76d]/30 transition-colors cursor-pointer"
             >
               <Wallet size={13} className="text-[#c8531c]" />
-              <span>₹{walletBalance}</span>
+              <span>{freeCredits} Free | {paidCredits} Paid</span>
             </button>
 
             <button
@@ -717,8 +720,8 @@ export default function AiChatClient({
               <button
                 type="button"
                 onClick={() => {
-                  if (walletBalance >= 5) {
-                    const success = onDeductBalance(5);
+                  if (paidCredits >= 1 || freeCredits >= 25) {
+                    const success = onDeductChat();
                     if (success) {
                       setMessageQuota(prev => prev + 10);
                       setShowPaymentPrompt(false);

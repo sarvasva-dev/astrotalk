@@ -62,7 +62,7 @@ import { KundliMatchingPage } from "./components/pages/KundliMatchingPage";
 import { UserProfilePage } from "./components/pages/UserProfilePage";
 import { SEOArticleHubPage } from "./components/pages/SEOArticleHubPage";
 
-import { useUser } from "@clerk/clerk-react";
+import { useUser, SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
 
 const STORAGE_PROFILE_KEY = "astroguru_user_profile";
 const STORAGE_WALLET_KEY = "astroguru_wallet_balance";
@@ -130,18 +130,15 @@ export default function App({ isClerkConfigured = false }: AppProps) {
     }
   });
 
-  const [walletBalance, setWalletBalance] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_WALLET_KEY);
-      return saved ? Number(saved) : 10; // Starting with ₹10 welcome bonus
-    } catch {
-      return 10;
-    }
-  });
+  const [freeCredits, setFreeCredits] = useState<number>(150);
+  const [paidCredits, setPaidCredits] = useState<number>(0);
+  const [claimStreak, setClaimStreak] = useState<number>(0);
+  const [activeTrial, setActiveTrial] = useState<{isActive: boolean, expiresAt: string | null}>({ isActive: false, expiresAt: null });
 
   const requireAuth = (callback: () => void) => {
     if (isClerkConfigured && !clerkUserId) {
-      triggerAuthSignIn();
+      const btn = document.getElementById("hidden-sign-in-btn");
+      if (btn) btn.click();
       return;
     }
     callback();
@@ -156,7 +153,12 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       .then(res => res.json())
       .then(data => {
         if (data.user) {
-          setWalletBalance(data.user.walletBalance);
+          setFreeCredits(data.user.freeCredits || 0);
+          setPaidCredits(data.user.paidCredits || 0);
+          setClaimStreak(data.user.claimStreak || 0);
+          if (data.user.activeTrial) {
+            setActiveTrial(data.user.activeTrial);
+          }
           setUserProfile((prev) => ({
             ...prev,
             id: userId,
@@ -223,22 +225,38 @@ export default function App({ isClerkConfigured = false }: AppProps) {
     }
   }, [userProfile]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_WALLET_KEY, String(walletBalance));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [walletBalance]);
-
   // Wallet operations
-  const handleRecharge = (amount: number, bonus: number) => {
-    setWalletBalance((prev) => prev + amount + bonus);
+  const handleRecharge = (amount: number, bonus: number, isTrial: boolean = false) => {
+    if (isTrial) {
+      setActiveTrial({ isActive: true, expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString() });
+    } else {
+      setPaidCredits((prev) => prev + amount + bonus);
+    }
   };
 
-  const handleDeductBalance = (amount: number): boolean => {
-    if (walletBalance >= amount) {
-      setWalletBalance((prev) => Math.max(0, prev - amount));
+  const handleDeductChat = (): boolean => {
+    if (activeTrial.isActive && activeTrial.expiresAt) {
+      if (new Date() < new Date(activeTrial.expiresAt)) {
+        return true; // Use trial, don't deduct credits
+      } else {
+        setActiveTrial({ isActive: false, expiresAt: null }); // Expired
+      }
+    }
+    
+    if (paidCredits >= 25) {
+      setPaidCredits((prev) => Math.max(0, prev - 25));
+      return true;
+    }
+    if (freeCredits >= 25) {
+      setFreeCredits((prev) => Math.max(0, prev - 25));
+      return true;
+    }
+    return false;
+  };
+
+  const handleDeductCall = (costPerMin: number): boolean => {
+    if (paidCredits >= costPerMin) {
+      setPaidCredits((prev) => Math.max(0, prev - costPerMin));
       return true;
     }
     return false;
@@ -296,9 +314,9 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       <VoiceCallClient
         counsellor={activeCallCounsellor}
         userProfile={userProfile}
-        walletBalance={walletBalance}
+        paidCredits={paidCredits}
         onEndCall={() => setActiveCallCounsellor(null)}
-        onDeductBalance={handleDeductBalance}
+        onDeductBalance={handleDeductCall}
         onOpenWallet={() => setIsWalletOpen(true)}
         onSwitchToChat={() => {
           const c = activeCallCounsellor;
@@ -317,13 +335,14 @@ export default function App({ isClerkConfigured = false }: AppProps) {
           counsellor={activeChatCounsellor}
           userProfile={userProfile}
           kundli={kundli}
-          walletBalance={walletBalance}
+          freeCredits={freeCredits}
+          paidCredits={paidCredits}
           onBack={() => setActiveChatCounsellor(null)}
           onStartCall={(c) => {
             setActiveChatCounsellor(null);
             setActiveCallCounsellor(c);
           }}
-          onDeductBalance={handleDeductBalance}
+          onDeductBalance={handleDeductChat}
           onOpenWallet={() => setIsWalletOpen(true)}
           onOpenOrchestrator={(trace) => {
             if (trace) setActiveTrace(trace);
@@ -332,10 +351,12 @@ export default function App({ isClerkConfigured = false }: AppProps) {
         />
         {isWalletOpen && (
           <WalletModal
-            balance={walletBalance}
-            userId={userProfile.id || "default_user"}
+            userId={clerkUserId || "default"}
+            freeCredits={freeCredits}
+            paidCredits={paidCredits}
+            claimStreak={claimStreak}
             onClose={() => setIsWalletOpen(false)}
-            onRecharge={handleRecharge}
+            onRecharge={(amount, bonus, isTrial) => handleRecharge(amount, bonus, isTrial)}
           />
         )}
         <OrchestratorHUD
@@ -355,6 +376,17 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       <StarCanvas />
       <PWAInstallPrompt />
 
+      {/* Hidden Sign-in button for imperative auth triggers */}
+      {isClerkConfigured && (
+        <div className="hidden">
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button id="hidden-sign-in-btn">Sign In</button>
+            </SignInButton>
+          </SignedOut>
+        </div>
+      )}
+
       {/* Top Header Navbar */}
       <Navbar
         currentRoute={currentRoute}
@@ -365,13 +397,21 @@ export default function App({ isClerkConfigured = false }: AppProps) {
             handleNavigate(route);
           }
         }}
-        walletBalance={walletBalance}
+        freeCredits={freeCredits}
+        paidCredits={paidCredits}
         userProfile={userProfile}
         onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
         onOpenProfile={() => requireAuth(() => handleNavigate({ page: "profile" }))}
         onOpenOrchestrator={() => setIsOrchestratorOpen(true)}
         aiCredits={creditProfile.creditsRemaining}
         isClerkConfigured={isClerkConfigured}
+      />
+      <BottomNav
+        currentRoute={currentRoute}
+        onNavigate={handleNavigate}
+        freeCredits={freeCredits}
+        paidCredits={paidCredits}
+        onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
       />
 
       {/* Main Content Area */}
@@ -424,14 +464,43 @@ export default function App({ isClerkConfigured = false }: AppProps) {
 
         {/* 4. USER PROFILE & SAVED KUNDLIS */}
         {currentRoute.page === "profile" && (
-          <UserProfilePage
-            initialTab={currentRoute.tab}
-            userProfile={userProfile}
-            walletBalance={walletBalance}
-            onUpdateProfile={(up) => setUserProfile(up)}
-            onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
-            onNavigate={handleNavigate}
-          />
+          isClerkConfigured ? (
+            <>
+              <SignedIn>
+                <UserProfilePage
+                  initialTab={currentRoute.tab}
+                  userProfile={userProfile}
+                  freeCredits={freeCredits}
+                  paidCredits={paidCredits}
+                  onUpdateProfile={(up) => setUserProfile(up)}
+                  onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
+                  onNavigate={handleNavigate}
+                />
+              </SignedIn>
+              <SignedOut>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+                  <div className="w-16 h-16 bg-[#fae6cf] rounded-full flex items-center justify-center mb-4 border border-[#f3a76d]">
+                    <ShieldCheck size={32} className="text-[#c8531c]" />
+                  </div>
+                  <h2 className="text-2xl font-display font-bold text-[#1b1612] mb-2">Secure Access</h2>
+                  <p className="text-[#786a55] mb-6 max-w-md">Please sign in to view your profile, saved Kundlis, and manage your wallet.</p>
+                  <button onClick={() => triggerAuthSignIn()} className="btn-saffron px-8 py-2.5 shadow-md">
+                    Sign In
+                  </button>
+                </div>
+              </SignedOut>
+            </>
+          ) : (
+            <UserProfilePage
+              initialTab={currentRoute.tab}
+              userProfile={userProfile}
+              freeCredits={freeCredits}
+              paidCredits={paidCredits}
+              onUpdateProfile={(up) => setUserProfile(up)}
+              onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
+              onNavigate={handleNavigate}
+            />
+          )
         )}
 
         {/* 5. SEO ARTICLE KNOWLEDGE HUB (/blogs or /blog/:slug) */}
@@ -581,10 +650,12 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       {/* Wallet Modal */}
       {isWalletOpen && (
         <WalletModal
-          balance={walletBalance}
-          userId={userProfile.id || "default_user"}
+          userId={clerkUserId || "default_user"}
+          freeCredits={freeCredits}
+          paidCredits={paidCredits}
+          claimStreak={claimStreak}
           onClose={() => setIsWalletOpen(false)}
-          onRecharge={handleRecharge}
+          onRecharge={(amount, bonus, isTrial) => handleRecharge(amount, bonus, isTrial)}
         />
       )}
 

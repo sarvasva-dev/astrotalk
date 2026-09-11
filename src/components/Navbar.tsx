@@ -19,7 +19,8 @@ import type { UserProfile, PageRoute } from "../types";
 interface NavbarProps {
   currentRoute: PageRoute;
   onNavigate: (route: PageRoute) => void;
-  walletBalance: number;
+  freeCredits: number;
+  paidCredits: number;
   userProfile: UserProfile;
   onOpenWallet: () => void;
   onOpenProfile: () => void;
@@ -111,7 +112,8 @@ function ClerkAuthSection({ isClerkConfigured }: { isClerkConfigured?: boolean }
 export default function Navbar({
   currentRoute,
   onNavigate,
-  walletBalance,
+  freeCredits,
+  paidCredits,
   userProfile,
   onOpenWallet,
   onOpenProfile,
@@ -214,7 +216,7 @@ export default function Navbar({
           <button
             id="nav-profile-btn"
             type="button"
-            onClick={() => onNavigate({ page: "profile" })}
+            onClick={onOpenProfile}
             className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors cursor-pointer ${
               currentRoute.page === "profile"
                 ? "bg-[#c8531c] text-white border-[#5e2308]"
@@ -236,7 +238,10 @@ export default function Navbar({
             className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-gradient-to-r from-[#fae6cf] to-[#ebd7be] border border-[#f3a76d] hover:border-[#c8531c] shadow-xs transition-all cursor-pointer group"
           >
             <Wallet size={14} className="text-[#c8531c] group-hover:scale-110 transition-transform" />
-            <span className="text-xs font-bold text-[#1b1612]">₹{walletBalance.toFixed(0)}</span>
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-[10px] font-bold text-[#c8531c]">F: {freeCredits.toFixed(0)}</span>
+              <span className="text-[10px] font-bold text-[#1b1612]">P: {paidCredits.toFixed(0)}</span>
+            </div>
             <span className="w-5 h-5 rounded-full bg-[#c8531c] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">
               +
             </span>

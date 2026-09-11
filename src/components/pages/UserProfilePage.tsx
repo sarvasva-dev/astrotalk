@@ -22,7 +22,8 @@ import { updateSEO } from "../../lib/seo";
 interface UserProfilePageProps {
   initialTab?: "details" | "charts" | "history" | "ledger";
   userProfile: UserProfile;
-  walletBalance: number;
+  freeCredits: number;
+  paidCredits: number;
   onUpdateProfile: (profile: UserProfile) => void;
   onOpenWallet: () => void;
   onNavigate: (route: PageRoute) => void;
@@ -31,7 +32,8 @@ interface UserProfilePageProps {
 export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   initialTab = "details",
   userProfile,
-  walletBalance,
+  freeCredits,
+  paidCredits,
   onUpdateProfile,
   onOpenWallet,
   onNavigate,
@@ -193,21 +195,21 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             </div>
           </div>
 
-          <div className="bg-white px-5 py-3 rounded-2xl border border-[#ebd7be] shadow-xs flex items-center gap-4">
-            <div>
-              <span className="text-[11px] text-[#826a48] uppercase tracking-wider font-semibold block">
-                Wallet Balance
-              </span>
-              <span className="text-xl font-bold text-[#c8531c]">
-                ₹{walletBalance.toFixed(2)}
-              </span>
+          <div className="p-4 rounded-xl bg-[#fae6cf] border border-[#f3a76d] shadow-xs flex items-center justify-between mt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-[#fbf6e8] text-[#c8531c]">
+                <Wallet size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-[#1b1612]">Wallet Balance</h3>
+                <div className="text-xs text-[#786a55]">Free: {freeCredits} | Paid: {paidCredits}</div>
+              </div>
             </div>
             <button
-              type="button"
               onClick={onOpenWallet}
-              className="px-4 py-2 bg-[#fae6cf] hover:bg-[#f3a76d] text-[#85350f] font-bold text-xs rounded-xl transition-all"
+              className="px-4 py-2 rounded-lg bg-[#c8531c] text-white text-sm font-bold hover:bg-[#a64010] transition-colors"
             >
-              + Add Money
+              Add Funds
             </button>
           </div>
         </div>

@@ -11,8 +11,14 @@ export interface IUser extends Document<string> {
   birthTime: string;
   birthTimeUnknown: boolean;
   birthPlace: string;
-  walletBalance: number;
-  aiCredits: number;
+  freeCredits: number;
+  paidCredits: number;
+  claimStreak: number;
+  lastClaimDate: string | null;
+  activeTrial?: {
+    isActive: boolean;
+    expiresAt: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,8 +33,14 @@ const UserSchema = new Schema<IUser>(
     birthTime: { type: String, default: "11:55 PM" },
     birthTimeUnknown: { type: Boolean, default: false },
     birthPlace: { type: String, default: "New Delhi, Delhi, India" },
-    walletBalance: { type: Number, default: 10 }, // Welcome balance ₹10
-    aiCredits: { type: Number, default: 10 },     // Welcome AI credits 10
+    freeCredits: { type: Number, default: 150 }, // Welcome bonus
+    paidCredits: { type: Number, default: 0 },
+    claimStreak: { type: Number, default: 0 },
+    lastClaimDate: { type: String, default: null },
+    activeTrial: {
+      isActive: { type: Boolean, default: false },
+      expiresAt: { type: Date },
+    },
   },
   { timestamps: true }
 );
@@ -202,7 +214,8 @@ class MemoryStore {
       birthTime: "11:55 PM",
       birthTimeUnknown: false,
       birthPlace: "New Delhi, Delhi, India",
-      walletBalance: 10,
+      freeCredits: 150,
+      paidCredits: 0,
       aiCredits: 10,
     });
   }
@@ -212,7 +225,8 @@ class MemoryStore {
       this.users.set(userId, {
         _id: userId,
         displayName: "Astro Seeker",
-        walletBalance: 10,
+        freeCredits: 150,
+        paidCredits: 0,
         aiCredits: 10,
       });
     }
@@ -221,8 +235,8 @@ class MemoryStore {
 
   updateWallet(userId: string, delta: number) {
     const user = this.getUser(userId);
-    user.walletBalance = Math.max(0, (user.walletBalance || 0) + delta);
-    return user.walletBalance;
+    user.paidCredits = Math.max(0, (user.paidCredits || 0) + delta);
+    return user.paidCredits;
   }
 }
 

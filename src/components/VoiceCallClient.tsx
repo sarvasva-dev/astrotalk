@@ -18,7 +18,7 @@ import type { Counsellor, UserProfile } from "../types";
 interface VoiceCallClientProps {
   counsellor: Counsellor;
   userProfile: UserProfile;
-  walletBalance: number;
+  paidCredits: number;
   onEndCall: () => void;
   onDeductBalance: (amount: number) => boolean;
   onOpenWallet: () => void;
@@ -28,7 +28,7 @@ interface VoiceCallClientProps {
 export default function VoiceCallClient({
   counsellor,
   userProfile,
-  walletBalance,
+  paidCredits,
   onEndCall,
   onDeductBalance,
   onOpenWallet,
@@ -362,7 +362,7 @@ export default function VoiceCallClient({
             className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fae6cf]/10 border border-[#f3a76d]/40 text-xs font-semibold text-[#f3a76d] cursor-pointer"
           >
             <Wallet size={12} />
-            <span>₹{walletBalance}</span>
+            <span>{paidCredits} Paid Credits</span>
           </button>
 
           <button

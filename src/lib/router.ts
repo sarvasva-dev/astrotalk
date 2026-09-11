@@ -148,7 +148,7 @@ export function navigateTo(route: PageRoute, replace = false) {
  * on a hidden button rendered inside Navbar.tsx
  */
 export function triggerAuthSignIn(): void {
-  const btn = document.getElementById("clerk-hidden-signin");
+  const btn = document.getElementById("hidden-sign-in-btn");
   if (btn) {
     btn.click();
   } else {

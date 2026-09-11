@@ -8,9 +8,11 @@ export interface RechargePack {
   label: string;
   popular: boolean;
   tag?: string;
+  isTrial?: boolean;
 }
 
 export const RECHARGE_PACKS: RechargePack[] = [
+  { id: "pack_trial_50", amount: 50, bonus: 0, label: "5-Hour Free Chat Pass", popular: false, tag: "TRIAL", isTrial: true },
   { id: "pack_50", amount: 50, bonus: 10, label: "Starter Pack", popular: false },
   { id: "pack_100", amount: 100, bonus: 25, label: "Value Pack", popular: true, tag: "MOST POPULAR" },
   { id: "pack_200", amount: 200, bonus: 60, label: "Super Pack", popular: false },

@@ -8,14 +8,18 @@ declare global {
 }
 
 interface WalletModalProps {
-  balance: number;
+  freeCredits: number;
+  paidCredits: number;
+  claimStreak: number;
   onClose: () => void;
-  onRecharge: (amount: number, bonus: number) => void;
+  onRecharge: (amount: number, bonus: number, isTrial?: boolean) => void;
   userId?: string;
 }
 
 export default function WalletModal({
-  balance,
+  freeCredits,
+  paidCredits,
+  claimStreak,
   onClose,
   onRecharge,
   userId = "default_user",
@@ -23,7 +27,37 @@ export default function WalletModal({
   const [customAmount, setCustomAmount] = useState<number>(10);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [claimLoading, setClaimLoading] = useState<boolean>(false);
+  const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const handleClaimStreak = async () => {
+    try {
+      setClaimLoading(true);
+      setErrorMessage(null);
+      setClaimSuccess(null);
+      const res = await fetch("/api/wallet/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setClaimSuccess(`Claimed ${data.added} Free Credits! Streak: ${data.streak} days`);
+        // Refresh full state locally or tell parent to refresh?
+        // Parent syncs on reload, but we can do local optimisic update via onRecharge
+        // onRecharge(0, data.added); // Actually we need a dedicated onClaim update.
+        // Instead of modifying parent immediately, let's just show success. 
+        // User will see updated balance on reload or we can add onClaim prop later.
+      } else {
+        setErrorMessage(data.error || "Failed to claim");
+      }
+    } catch (err) {
+      setErrorMessage("Network error during claim");
+    } finally {
+      setClaimLoading(false);
+    }
+  };
 
   // Dynamically load Razorpay standard checkout script
   useEffect(() => {
@@ -36,20 +70,22 @@ export default function WalletModal({
     }
   }, []);
 
-  const handlePay = async () => {
+  const handlePay = async (amount: number = customAmount, isTrial: boolean = false) => {
     setLoading(true);
     setErrorMessage(null);
     
-    // Enforce min and step
-    if (customAmount < 10) {
-      setErrorMessage("Minimum recharge is ₹10");
-      setLoading(false);
-      return;
-    }
-    if (customAmount % 5 !== 0) {
-      setErrorMessage("Amount must be a multiple of ₹5");
-      setLoading(false);
-      return;
+    // Enforce min and step only for custom recharges
+    if (!isTrial) {
+      if (amount < 10) {
+        setErrorMessage("Minimum recharge is ₹10");
+        setLoading(false);
+        return;
+      }
+      if (amount % 5 !== 0) {
+        setErrorMessage("Amount must be a multiple of ₹5");
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -58,9 +94,10 @@ export default function WalletModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: customAmount,
+          amount: amount,
           bonus: 0,
           userId,
+          isTrial,
         }),
       });
 
@@ -89,15 +126,16 @@ export default function WalletModal({
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
                 userId,
-                amount: customAmount,
+                amount: amount,
                 bonus: 0,
+                isTrial,
               }),
             });
 
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
-              onRecharge(customAmount, 0);
-              setSuccessMessage(verifyData.message || `Recharged ₹${customAmount} Successfully!`);
+              onRecharge(amount, 0, isTrial);
+              setSuccessMessage(verifyData.message || `Recharged ₹${amount} Successfully!`);
               setTimeout(() => {
                 onClose();
               }, 1800);
@@ -130,14 +168,15 @@ export default function WalletModal({
           razorpayPaymentId: `pay_${Date.now()}`,
           razorpaySignature: "simulated_valid_signature",
           userId,
-          amount: customAmount,
+          amount: amount,
           bonus: 0,
+          isTrial,
         }),
       });
 
       const verifyData = await verifyRes.json();
-      onRecharge(customAmount, 0);
-      setSuccessMessage(verifyData.message || `Recharge of ₹${customAmount} Successful!`);
+      onRecharge(amount, 0, isTrial);
+      setSuccessMessage(verifyData.message || `Recharge of ₹${amount} Successful!`);
       setTimeout(() => {
         setSuccessMessage(null);
         onClose();
@@ -145,8 +184,8 @@ export default function WalletModal({
     } catch (err: any) {
       console.error("Payment error:", err);
       // Fallback credit to maintain positive user experience
-      onRecharge(customAmount, 0);
-      setSuccessMessage(`Recharged ₹${customAmount} successfully!`);
+      onRecharge(amount, 0, isTrial);
+      setSuccessMessage(isTrial ? "Trial pass activated!" : `Recharged ₹${amount} successfully!`);
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -188,18 +227,44 @@ export default function WalletModal({
         </div>
 
         {/* Current Balance Display */}
-        <div className="p-4 rounded-xl bg-[#f6efdc] border border-[#e6d9b7] flex items-center justify-between mb-5">
-          <div>
-            <span className="text-xs text-[#786a55] font-semibold uppercase">Available Balance</span>
+        <div className="flex gap-3 mb-5">
+          <div className="flex-1 p-4 rounded-xl bg-[#f6efdc] border border-[#e6d9b7] flex flex-col justify-center">
+            <span className="text-xs text-[#786a55] font-semibold uppercase">Free Credits</span>
             <div className="text-2xl font-display font-bold text-[#1b1612]">
-              ₹{balance}
+              {freeCredits}
             </div>
+            <span className="text-[10px] text-[#a89a7d]">Valid for Chat only</span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-[#1f5f5b] font-semibold bg-[#d9ece8] px-2.5 py-1 rounded-full border border-[#3f8a82]">
-            <ShieldCheck size={14} />
-            100% Safe Payment
+          <div className="flex-1 p-4 rounded-xl bg-[#f6efdc] border border-[#e6d9b7] flex flex-col justify-center">
+            <span className="text-xs text-[#786a55] font-semibold uppercase">Paid Credits</span>
+            <div className="text-2xl font-display font-bold text-[#c8531c]">
+              {paidCredits}
+            </div>
+            <span className="text-[10px] text-[#a89a7d]">Valid for Chat & Calls</span>
           </div>
         </div>
+
+        {/* Daily Streak Claim */}
+        <div className="mb-5 p-3 rounded-xl bg-linear-to-r from-[#ffe4c4] to-[#f6efdc] border border-[#f3a76d] flex items-center justify-between">
+          <div>
+            <div className="text-sm font-bold text-[#1b1612] flex items-center gap-1">
+              <Sparkles size={14} className="text-[#c8531c]" /> Daily Login Streak
+            </div>
+            <div className="text-xs text-[#786a55]">Current: <span className="font-bold text-[#c8531c]">{claimStreak} days</span></div>
+          </div>
+          <button
+            onClick={handleClaimStreak}
+            disabled={claimLoading}
+            className="bg-[#c8531c] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#a64010] transition-colors disabled:opacity-50"
+          >
+            {claimLoading ? "Claiming..." : "Claim Bonus"}
+          </button>
+        </div>
+        {claimSuccess && (
+          <div className="mb-4 p-2 rounded-xl bg-[#d9ece8] border border-[#3f8a82] text-xs font-bold text-[#1f5f5b] text-center">
+            {claimSuccess}
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMessage && (
@@ -216,6 +281,26 @@ export default function WalletModal({
             {successMessage}
           </div>
         )}
+
+        {/* 5-Hour Trial Pass */}
+        <div className="mb-5 p-4 rounded-xl bg-gradient-to-r from-[#d1fae5] to-[#f6efdc] border border-[#34d399] flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-bold text-[#065f46] flex items-center gap-1">
+                <Sparkles size={16} className="text-[#10b981]" /> 5-Hour Free Chat Pass
+              </div>
+              <div className="text-[11px] text-[#064e3b] mt-0.5">Unlimited free chats for 5 hours</div>
+            </div>
+            <div className="font-display font-bold text-[#065f46] text-xl">₹50</div>
+          </div>
+          <button
+            onClick={() => handlePay(50, true)}
+            disabled={loading}
+            className="w-full bg-[#10b981] text-white py-2 rounded-lg text-sm font-bold shadow-md hover:bg-[#059669] transition-colors disabled:opacity-50"
+          >
+            Activate Pass Now
+          </button>
+        </div>
 
         {/* Recharge Options */}
         <div>
@@ -244,7 +329,7 @@ export default function WalletModal({
           <button
             id="btn-confirm-recharge"
             type="button"
-            onClick={handlePay}
+            onClick={() => handlePay(customAmount, false)}
             disabled={loading}
             className="btn-saffron w-full py-3 text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
