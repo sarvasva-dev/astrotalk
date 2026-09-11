@@ -357,6 +357,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
             if (trace) setActiveTrace(trace);
             setIsOrchestratorOpen(true);
           }}
+          onOpenOnboarding={() => setIsOnboardingOpen(true)}
         />
         {isWalletOpen && (
           <WalletModal

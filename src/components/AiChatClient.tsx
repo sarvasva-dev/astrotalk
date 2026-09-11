@@ -38,6 +38,7 @@ interface AiChatClientProps {
   onDeductChat: () => boolean;
   onOpenWallet: () => void;
   onOpenOrchestrator: (trace?: OrchestratorTrace) => void;
+  onOpenOnboarding?: () => void;
 }
 
 export default function AiChatClient({
@@ -51,6 +52,7 @@ export default function AiChatClient({
   onDeductChat,
   onOpenWallet,
   onOpenOrchestrator,
+  onOpenOnboarding,
 }: AiChatClientProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
@@ -453,8 +455,25 @@ export default function AiChatClient({
           <div className="flex items-center gap-2 truncate">
             <Sparkles size={13} className="text-[#c8531c] shrink-0" />
             <span className="truncate">
-              Kundli: <strong className="text-[#1b1612]">{userProfile.displayName || "Client"}</strong>
-              {kundli ? ` (${kundli.lagna} Lagna • ${kundli.moonSign} Rashi)` : " (Loaded)"}
+              {userProfile.birthDate && userProfile.isProfileComplete && kundli ? (
+                <>
+                  Kundli: <strong className="text-[#1b1612]">{userProfile.displayName || "Client"}</strong>
+                  {` (${kundli.lagna} Lagna • ${kundli.moonSign} Rashi)`}
+                </>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <span>Kundli:</span>
+                  <span className="font-semibold text-[#c8531c]">Birth Details Not Set</span>
+                  <span>•</span>
+                  <button
+                    type="button"
+                    onClick={onOpenOnboarding}
+                    className="text-[#1f5f5b] hover:underline font-bold cursor-pointer"
+                  >
+                    Set Date of Birth for Natal Chart
+                  </button>
+                </span>
+              )}
             </span>
           </div>
 
@@ -471,6 +490,23 @@ export default function AiChatClient({
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 max-w-4xl mx-auto w-full">
+        {(!userProfile.birthDate || !userProfile.isProfileComplete) && (
+          <div className="p-3.5 rounded-xl bg-[#fae6cf] border border-[#f3a76d] text-xs text-[#5e2308] flex items-center justify-between gap-3 shadow-xs my-2">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-[#c8531c] shrink-0" />
+              <span>
+                <strong>Birth details missing.</strong> Set your Date of Birth for Lagna, Rashi & Dasha calculations.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenOnboarding}
+              className="btn-saffron text-xs px-3 py-1.5 shrink-0 cursor-pointer"
+            >
+              Set Birth Details
+            </button>
+          </div>
+        )}
         {messages.map((msg) => {
           const isUser = msg.role === "user";
           const isPlaying = speechActiveId === msg.id;
