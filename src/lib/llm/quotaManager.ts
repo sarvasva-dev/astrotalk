@@ -1,4 +1,4 @@
-import { LLMProviderId, LLMTaskType, ProviderQuotaState } from './types.js';
+import { LLMProviderId, LLMTaskType, ProviderQuotaState } from './types';
 
 // Default limits based on provider free tiers
 const INITIAL_LIMITS: Record<LLMProviderId, { daily: number; minute: number }> = {

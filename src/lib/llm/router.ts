@@ -1,11 +1,11 @@
-import { LLMMessage, LLMRequestOptions, LLMResponse, LLMProviderId } from './types.js';
-import { quotaManager } from './quotaManager.js';
-import { callGroq } from './groq.js';
-import { callGemini } from './gemini.js';
-import { callSambaNova } from './sambanova.js';
-import { callOpenRouter } from './openrouter.js';
-import { callSarvam } from './sarvam.js';
-import { callOffline } from './offline.js';
+import { LLMMessage, LLMRequestOptions, LLMResponse, LLMProviderId } from './types';
+import { quotaManager } from './quotaManager';
+import { callGroq } from './groq';
+import { callGemini } from './gemini';
+import { callSambaNova } from './sambanova';
+import { callOpenRouter } from './openrouter';
+import { callSarvam } from './sarvam';
+import { callOffline } from './offline';
 
 // Stub for providers that don't have active API keys yet
 async function notConfigured(provider: string): Promise<LLMResponse> {

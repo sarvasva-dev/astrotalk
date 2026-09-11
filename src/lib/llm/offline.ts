@@ -1,4 +1,4 @@
-import { LLMMessage, LLMRequestOptions, LLMResponse } from './types.js';
+import { LLMMessage, LLMRequestOptions, LLMResponse } from './types';
 
 const OFFLINE_RESPONSES = [
   "Om Namah Shivaya. Based on your birth chart alignments, Jupiter (Guru) is presently placing strong focus on your 10th house of career and karma. Stay patient and maintain steady action.",

@@ -1,4 +1,4 @@
-import { LLMMessage, LLMRequestOptions, LLMResponse } from './types.js';
+import { LLMMessage, LLMRequestOptions, LLMResponse } from './types';
 
 export async function callSambaNova(
   messages: LLMMessage[],
