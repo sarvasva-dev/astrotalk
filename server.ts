@@ -28,6 +28,7 @@ import {
 } from "./src/lib/razorpay";
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = 3000;
 
 app.use(express.json());
@@ -74,16 +75,20 @@ function setupSession() {
   // Use MongoDB session store if DB is available, else use in-memory
   if (mongoUri) {
     try {
-      sessionConfig.store = MongoStore.create({
+      const store = MongoStore.create({
         mongoUrl: mongoUri,
         collectionName: "sessions",
         ttl: 7 * 24 * 60 * 60, // 7 days in seconds
         autoRemove: "native",
         touchAfter: 24 * 3600, // only update session once per 24h unless data changes
       });
+      store.on("error", (err) => {
+        console.warn("[Session Store Warning]", err?.message || err);
+      });
+      sessionConfig.store = store;
       console.log("[Session] Using MongoDB session store");
-    } catch (e) {
-      console.warn("[Session] MongoDB store failed, falling back to in-memory");
+    } catch (e: any) {
+      console.warn("[Session] MongoDB store failed, falling back to in-memory:", e?.message);
     }
   } else {
     console.log("[Session] Using in-memory session store (dev mode)");
@@ -945,6 +950,17 @@ app.get("/api/panchang", (_req, res) => {
     moonSign: "Vrishabha (Taurus)",
     vikramSamvat: "2082 Pingala",
   });
+});
+
+// API 404 Fallback
+app.use("/api/*", (_req, res) => {
+  res.status(404).json({ error: "API endpoint not found" });
+});
+
+// Global Express Error Handler Middleware
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("[Express Global Error]:", err);
+  res.status(500).json({ error: "Internal Server Error", details: err?.message || "An error occurred" });
 });
 
 // Initialize MongoDB connection pool with resilient fallback

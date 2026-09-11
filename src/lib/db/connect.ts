@@ -44,7 +44,7 @@ export async function connectToDatabase(): Promise<{ isConnected: boolean; isFal
 
   if (!cached.promise) {
     const opts: mongoose.ConnectOptions = {
-      bufferCommands: false,
+      bufferCommands: true,
       serverSelectionTimeoutMS: 5000,
     };
 

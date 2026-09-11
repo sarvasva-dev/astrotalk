@@ -16,6 +16,17 @@ async function ensureDb() {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  await ensureDb();
-  return (app as any)(req, res);
+  try {
+    await ensureDb();
+    // Normalize req.url if Vercel serverless passes function path
+    if (req.url && req.url.startsWith("/api/index.ts")) {
+      req.url = req.url.replace("/api/index.ts", "/api") || "/api";
+    }
+    return (app as any)(req, res);
+  } catch (err: any) {
+    console.error("[Vercel Handler Error]:", err);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: "Serverless execution error", details: err?.message || String(err) });
+    }
+  }
 }
