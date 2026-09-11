@@ -409,9 +409,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       <BottomNav
         currentRoute={currentRoute}
         onNavigate={handleNavigate}
-        freeCredits={freeCredits}
-        paidCredits={paidCredits}
-        onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
+        isClerkConfigured={isClerkConfigured}
       />
 
       {/* Main Content Area */}

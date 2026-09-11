@@ -498,10 +498,8 @@ app.get(["/api/user", "/api/user/:userId"], async (req, res) => {
           gender: "male",
           birthDate: "2005-12-21",
           birthTime: "11:55 PM",
-          birthPlace: "New Delhi, Delhi, India",
           freeCredits: 150,
           paidCredits: 0,
-          aiCredits: 10,
         });
       }
       return res.json({ user, isDatabaseConnected: true });
@@ -828,7 +826,7 @@ if (process.env.VERCEL !== "1") {
     } else {
       const distPath = path.join(process.cwd(), "dist");
       app.use(express.static(distPath));
-      app.get("*", (_req, res) => {
+      app.get("*", (req, res) => {
         if (!req.path.startsWith('/api/')) {
           res.sendFile(path.join(distPath, "index.html"));
         }

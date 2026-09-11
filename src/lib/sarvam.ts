@@ -46,8 +46,8 @@ export class SarvamAIService {
 
     try {
       const formData = new FormData();
-      const uint8Array = new Uint8Array(audioBuffer.buffer, audioBuffer.byteOffset, audioBuffer.byteLength);
-      const blob = new Blob([uint8Array], { type: mimeType });
+      const arrayBuffer = audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength) as ArrayBuffer;
+      const blob = new Blob([arrayBuffer], { type: mimeType });
       formData.append("file", blob, fileName);
       formData.append("model", "saaras:v2");
       // Use 'unknown' for Sarvam auto-detecting Hindi, Hinglish, English, and regional speech
