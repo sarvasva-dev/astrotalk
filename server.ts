@@ -814,27 +814,33 @@ app.get("/api/panchang", (_req, res) => {
   });
 });
 
-async function startServer() {
-  // Initialize MongoDB connection pool with resilient fallback
-  await connectToDatabase();
+// Initialize MongoDB connection pool with resilient fallback
+connectToDatabase().catch(console.error);
 
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+if (process.env.VERCEL !== "1") {
+  async function startServer() {
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (_req, res) => {
+        if (!req.path.startsWith('/api/')) {
+          res.sendFile(path.join(distPath, "index.html"));
+        }
+      });
+    }
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Astroguru server running on http://0.0.0.0:${PORT}`);
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Astroguru server running on http://0.0.0.0:${PORT}`);
-  });
+  startServer();
 }
 
-startServer();
+export default app;
