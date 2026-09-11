@@ -342,7 +342,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
             setActiveChatCounsellor(null);
             setActiveCallCounsellor(c);
           }}
-          onDeductBalance={handleDeductChat}
+          onDeductChat={handleDeductChat}
           onOpenWallet={() => setIsWalletOpen(true)}
           onOpenOrchestrator={(trace) => {
             if (trace) setActiveTrace(trace);
