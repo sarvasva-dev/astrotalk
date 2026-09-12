@@ -20,12 +20,14 @@ import {
 import type { Counsellor, PageRoute, UserProfile } from "../../types";
 import { SEED_COUNSELLORS } from "../../data/counsellors";
 import { updateSEO, injectOrganizationAndWebsiteSchema, injectFaqSchema } from "../../lib/seo";
+import { isProfileFullySet } from "../../lib/profileSanitizer";
 
 interface LandingPageProps {
   onNavigate: (route: PageRoute) => void;
   onStartChat: (counsellor: Counsellor) => void;
   onStartCall: (counsellor: Counsellor) => void;
   userProfile: UserProfile;
+  onOpenOnboarding?: () => void;
 }
 
 const FAQ_ITEMS = [
@@ -55,8 +57,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigate,
   onStartChat,
   onStartCall,
+  userProfile,
+  onOpenOnboarding,
 }) => {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+  const handleAction = (page: PageRoute) => {
+    if (!isProfileFullySet(userProfile) && onOpenOnboarding) {
+      onOpenOnboarding();
+    }
+    onNavigate(page);
+  };
 
   useEffect(() => {
     updateSEO({
@@ -101,7 +112,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex flex-wrap items-center gap-4">
               <button
                 type="button"
-                onClick={() => onNavigate({ page: "consult" })}
+                onClick={() => handleAction({ page: "consult" })}
                 className="btn-cosmic-primary text-sm px-6 py-3.5 flex items-center gap-2"
               >
                 <Sparkles className="w-4 h-4 text-orange-200" />
@@ -110,7 +121,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               <button
                 type="button"
-                onClick={() => onNavigate({ page: "kundli" })}
+                onClick={() => handleAction({ page: "kundli" })}
                 className="btn-cosmic-teal text-sm px-6 py-3.5 flex items-center gap-2"
               >
                 <Compass className="w-4 h-4" />
@@ -158,7 +169,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <button
               type="button"
-              onClick={() => onNavigate({ page: "kundli" })}
+              onClick={() => handleAction({ page: "kundli" })}
               className="w-full py-3 btn-cosmic-primary text-xs flex items-center justify-center gap-2"
             >
               <span>Generate Free Kundli</span>

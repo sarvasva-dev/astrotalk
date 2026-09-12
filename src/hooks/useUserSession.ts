@@ -37,13 +37,25 @@ const DEFAULT_SESSION: SessionData = {
   lastSynced: 0,
 };
 
-const SESSION_STALE_MS = 5 * 60 * 1000; // re-sync after 5 minutes
+import { isDummyBirthDate, isDummyDisplayName, isProfileFullySet } from "../lib/profileSanitizer";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function loadSession(): SessionData {
   try {
     const raw = localStorage.getItem(LS_SESSION_KEY);
-    if (raw) return { ...DEFAULT_SESSION, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.profile) {
+        if (isDummyBirthDate(parsed.profile.birthDate)) {
+          parsed.profile.birthDate = "";
+          parsed.profile.isProfileComplete = false;
+        }
+        if (isDummyDisplayName(parsed.profile.displayName)) {
+          parsed.profile.displayName = "";
+        }
+      }
+      return { ...DEFAULT_SESSION, ...parsed };
+    }
   } catch {}
   return { ...DEFAULT_SESSION };
 }
@@ -97,23 +109,32 @@ export function useUserSession() {
       const user = data.user;
 
       if (user) {
-        const isComplete = Boolean(user.birthDate && user.birthPlace && user.birthDate !== "2000-01-01" && user.birthDate !== "1998-05-15");
+        const hasValidDob = !isDummyBirthDate(user.birthDate);
+        const hasValidPlace = user.birthPlace && user.birthPlace !== "India" && user.birthPlace !== "New Delhi, India";
+        const isComplete = Boolean(user.isProfileComplete || (hasValidDob && hasValidPlace));
+
+        const cleanDisplayName = !isDummyDisplayName(user.displayName)
+          ? user.displayName
+          : !isDummyDisplayName(fullName)
+          ? fullName
+          : "";
+
         const updatedSession: SessionData = {
           userId,
-          displayName: user.displayName || fullName,
+          displayName: cleanDisplayName,
           freeCredits: user.freeCredits ?? 150,
           paidCredits: user.paidCredits ?? 0,
           claimStreak: user.claimStreak ?? 0,
           activeTrial: user.activeTrial ?? { isActive: false, expiresAt: null },
           profile: {
             id: userId,
-            displayName: user.displayName || fullName || "",
-            birthDate: user.birthDate || "",
+            displayName: cleanDisplayName,
+            birthDate: hasValidDob ? user.birthDate : "",
             birthTime: user.birthTime || "12:00",
             birthTimeUnknown: user.birthTimeUnknown ?? false,
-            birthPlace: user.birthPlace || "",
+            birthPlace: hasValidPlace ? user.birthPlace : "",
             gender: user.gender || "male",
-            isProfileComplete: user.isProfileComplete ?? isComplete,
+            isProfileComplete: isComplete,
           },
           lastSynced: Date.now(),
         };

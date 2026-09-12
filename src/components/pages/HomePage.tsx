@@ -13,14 +13,23 @@ import {
   BookOpen,
 } from 'lucide-react';
 import type { PageRoute, UserProfile } from '../../types';
+import { isProfileFullySet } from '../../lib/profileSanitizer';
 
 interface HomePageProps {
   onNavigate: (route: PageRoute) => void;
   userProfile: UserProfile;
+  onOpenOnboarding?: () => void;
 }
 
-export const HomePage: React.FC<HomePageProps> = ({ onNavigate, userProfile }) => {
+export const HomePage: React.FC<HomePageProps> = ({ onNavigate, userProfile, onOpenOnboarding }) => {
   const userName = userProfile.displayName ? userProfile.displayName.split(' ')[0] : 'Seeker';
+
+  const handleAction = (page: PageRoute) => {
+    if (!isProfileFullySet(userProfile) && onOpenOnboarding) {
+      onOpenOnboarding();
+    }
+    onNavigate(page);
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8 text-slate-100">
@@ -60,7 +69,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, userProfile }) =
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
         <button
-          onClick={() => onNavigate({ page: 'kundli' })}
+          onClick={() => handleAction({ page: 'kundli' })}
           className="card-cosmic p-4 text-center flex flex-col items-center justify-center hover:border-cyan-500/50 group"
         >
           <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-3 group-hover:scale-110 transition-transform">
@@ -71,7 +80,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, userProfile }) =
         </button>
 
         <button
-          onClick={() => onNavigate({ page: 'archetype' })}
+          onClick={() => handleAction({ page: 'archetype' })}
           className="card-cosmic p-4 text-center flex flex-col items-center justify-center hover:border-purple-500/50 group"
         >
           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-3 group-hover:scale-110 transition-transform">
@@ -82,7 +91,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, userProfile }) =
         </button>
 
         <button
-          onClick={() => onNavigate({ page: 'life-timeline' })}
+          onClick={() => handleAction({ page: 'life-timeline' })}
           className="card-cosmic p-4 text-center flex flex-col items-center justify-center hover:border-emerald-500/50 group"
         >
           <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-3 group-hover:scale-110 transition-transform">
@@ -93,7 +102,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, userProfile }) =
         </button>
 
         <button
-          onClick={() => onNavigate({ page: 'remedies' })}
+          onClick={() => handleAction({ page: 'remedies' })}
           className="card-cosmic p-4 text-center flex flex-col items-center justify-center hover:border-orange-500/50 group"
         >
           <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 mb-3 group-hover:scale-110 transition-transform">

@@ -50,6 +50,8 @@ import { AICreditManager } from "./lib/orchestrator/creditManager";
 import { getCurrentRoute, navigateTo, triggerAuthSignIn } from "./lib/router";
 import { useUserSession } from "./hooks/useUserSession";
 
+import { isDummyBirthDate, isDummyDisplayName, isProfileFullySet } from "./lib/profileSanitizer";
+
 // Pages & Components
 import { StarCanvas } from "./components/StarCanvas";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
@@ -115,11 +117,6 @@ export default function App({ isClerkConfigured = false }: AppProps) {
     };
   }, []);
 
-  const handleNavigate = (route: PageRoute) => {
-    setCurrentRoute(route);
-    navigateTo(route);
-  };
-
   // ─── Session (localStorage-backed, Clerk-synced) ────────────────────────────
   const {
     userId: clerkUserId,
@@ -141,16 +138,44 @@ export default function App({ isClerkConfigured = false }: AppProps) {
   const [localProfile, setLocalProfile] = useState<UserProfile>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_PROFILE_KEY);
-      return saved ? { ...DEFAULT_PROFILE, ...JSON.parse(saved) } : DEFAULT_PROFILE;
+      if (!saved) return DEFAULT_PROFILE;
+      const parsed = JSON.parse(saved);
+      if (isDummyBirthDate(parsed.birthDate)) {
+        parsed.birthDate = "";
+        parsed.isProfileComplete = false;
+      }
+      if (isDummyDisplayName(parsed.displayName)) {
+        parsed.displayName = "";
+      }
+      return { ...DEFAULT_PROFILE, ...parsed };
     } catch {
       return DEFAULT_PROFILE;
     }
   });
 
   // Merge: sessionProfile (from DB sync) takes priority over localProfile
-  const userProfile: UserProfile = {
-    ...localProfile,
-    ...(sessionProfile && sessionProfile.birthDate ? sessionProfile : {}),
+  const userProfile: UserProfile = useMemo(() => {
+    const merged = {
+      ...localProfile,
+      ...(sessionProfile && sessionProfile.birthDate ? sessionProfile : {}),
+    };
+    if (isDummyBirthDate(merged.birthDate)) {
+      merged.birthDate = "";
+      merged.isProfileComplete = false;
+    }
+    if (isDummyDisplayName(merged.displayName)) {
+      merged.displayName = "";
+    }
+    return merged;
+  }, [localProfile, sessionProfile]);
+
+  const handleNavigate = (route: PageRoute) => {
+    const chartPages = ["kundli", "archetype", "life-timeline", "remedies"];
+    if (chartPages.includes(route.page) && !isProfileFullySet(userProfile)) {
+      setIsOnboardingOpen(true);
+    }
+    setCurrentRoute(route);
+    navigateTo(route);
   };
 
   const requireAuth = (callback: () => void) => {
@@ -190,13 +215,13 @@ export default function App({ isClerkConfigured = false }: AppProps) {
 
   // Auto-prompt onboarding modal if birth details are missing
   useEffect(() => {
-    if (!userProfile.birthDate || !userProfile.isProfileComplete) {
+    if (!isProfileFullySet(userProfile)) {
       const timer = setTimeout(() => {
         setIsOnboardingOpen(true);
-      }, 600);
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [userProfile.birthDate, userProfile.isProfileComplete]);
+  }, [userProfile]);
 
   // Sync Kundli data with birth chart profile
   useEffect(() => {
@@ -413,6 +438,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
         onOpenWallet={() => requireAuth(() => setIsWalletOpen(true))}
         onOpenProfile={() => requireAuth(() => handleNavigate({ page: "profile" }))}
         onOpenOrchestrator={() => setIsOrchestratorOpen(true)}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
         aiCredits={creditProfile.creditsRemaining}
         isClerkConfigured={isClerkConfigured}
       />
@@ -431,12 +457,17 @@ export default function App({ isClerkConfigured = false }: AppProps) {
             onStartChat={(c) => requireAuth(() => setActiveChatCounsellor(c))}
             onStartCall={(c) => requireAuth(() => setActiveCallCounsellor(c))}
             userProfile={userProfile}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
           />
         )}
 
         {/* 2. HOME DASHBOARD PAGE (/home) */}
         {currentRoute.page === "home" && (
-          <HomePage onNavigate={handleNavigate} userProfile={userProfile} />
+          <HomePage
+            onNavigate={handleNavigate}
+            userProfile={userProfile}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
+          />
         )}
 
         {/* 3. ASTRO ARCHETYPE PAGE (/archetype) */}

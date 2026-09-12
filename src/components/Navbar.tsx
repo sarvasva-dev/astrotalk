@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import type { UserProfile, PageRoute } from "../types";
+import { isProfileFullySet } from "../lib/profileSanitizer";
 
 interface NavbarProps {
   currentRoute: PageRoute;
@@ -25,6 +26,7 @@ interface NavbarProps {
   onOpenWallet: () => void;
   onOpenProfile: () => void;
   onOpenOrchestrator?: () => void;
+  onOpenOnboarding?: () => void;
   aiCredits?: number;
   isClerkConfigured?: boolean;
 }
@@ -118,6 +120,7 @@ export default function Navbar({
   onOpenWallet,
   onOpenProfile,
   onOpenOrchestrator,
+  onOpenOnboarding,
   aiCredits = 86,
   isClerkConfigured = false,
 }: NavbarProps) {
@@ -190,6 +193,20 @@ export default function Navbar({
 
         {/* User Kundli Profile, AI Orchestrator, Clerk Auth & Wallet Action */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* Setup Kundli Button if Profile Incomplete */}
+          {onOpenOnboarding && !isProfileFullySet(userProfile) && (
+            <button
+              id="nav-setup-birth-details"
+              type="button"
+              onClick={onOpenOnboarding}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/50 hover:border-orange-400 text-xs font-bold text-orange-600 dark:text-orange-300 shadow-xs animate-pulse transition-all cursor-pointer"
+              title="Set your birth details for accurate Kundli"
+            >
+              <Sparkles size={13} className="text-orange-500" />
+              <span>Setup Kundli</span>
+            </button>
+          )}
+
           {/* Clerk Auth Section */}
           <div className="hidden lg:block">
             <ClerkAuthSection isClerkConfigured={isClerkConfigured} />
