@@ -8,27 +8,59 @@ interface OnboardingModalProps {
   onSave: (profile: UserProfile) => void;
 }
 
+const POPULAR_CITIES = [
+  "New Delhi, India",
+  "Varanasi, UP, India",
+  "Mumbai, Maharashtra, India",
+  "Bengaluru, Karnataka, India",
+  "Jaipur, Rajasthan, India",
+  "Kolkata, West Bengal, India",
+  "Lucknow, UP, India",
+];
+
 export default function OnboardingModal({
   initialProfile,
   onClose,
   onSave,
 }: OnboardingModalProps) {
-  const [displayName, setDisplayName] = useState(initialProfile.displayName || "");
+  // Clean initial states — don't prefill dummy names like "Astro Seeker" or "Rahul Sharma"
+  const cleanName =
+    initialProfile.displayName &&
+    initialProfile.displayName !== "Astro Seeker" &&
+    initialProfile.displayName !== "Rahul Sharma"
+      ? initialProfile.displayName
+      : "";
+
+  const cleanDate =
+    initialProfile.birthDate &&
+    initialProfile.birthDate !== "1998-05-15" &&
+    initialProfile.birthDate !== "2000-01-01"
+      ? initialProfile.birthDate
+      : "";
+
+  const cleanPlace =
+    initialProfile.birthPlace &&
+    initialProfile.birthPlace !== "New Delhi, India" &&
+    initialProfile.birthPlace !== "India"
+      ? initialProfile.birthPlace
+      : "";
+
+  const [displayName, setDisplayName] = useState(cleanName);
   const [gender, setGender] = useState<"male" | "female" | "other" | null>(initialProfile.gender || "male");
-  const [birthDate, setBirthDate] = useState(initialProfile.birthDate || "");
+  const [birthDate, setBirthDate] = useState(cleanDate);
   const [birthTime, setBirthTime] = useState(initialProfile.birthTime || "12:00");
   const [birthTimeUnknown, setBirthTimeUnknown] = useState(initialProfile.birthTimeUnknown || false);
-  const [birthPlace, setBirthPlace] = useState(initialProfile.birthPlace || "");
+  const [birthPlace, setBirthPlace] = useState(cleanPlace);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onSave({
-      displayName: displayName.trim() || "Seeker",
-      gender,
+      displayName: displayName.trim() || "Astro Seeker",
+      gender: gender || "male",
       birthDate,
-      birthTime,
+      birthTime: birthTimeUnknown ? "12:00" : birthTime,
       birthTimeUnknown,
-      birthPlace: birthPlace.trim() || "Varanasi, UP, India",
+      birthPlace: birthPlace.trim() || "New Delhi, India",
       isProfileComplete: true,
     });
     onClose();
@@ -37,68 +69,82 @@ export default function OnboardingModal({
   return (
     <div
       id="profile-onboarding-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl bg-[#fbf6e8] border border-[#c9b884] shadow-2xl p-6 text-[#1b1612]"
+        className="relative w-full max-w-lg rounded-3xl bg-gradient-to-b from-[#0f172a] via-[#111c35] to-[#070d1a] border border-[#06b6d4]/30 shadow-2xl shadow-[#06b6d4]/10 p-6 sm:p-8 text-[#f8fafc] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Ambient Glows */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#f97316]/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-[#06b6d4]/20 rounded-full blur-3xl pointer-events-none" />
+
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-[#ebe2c8] text-[#786a55] transition-colors cursor-pointer"
+          className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all cursor-pointer border border-white/10"
           aria-label="Close"
         >
-          <X size={20} />
+          <X size={18} />
         </button>
 
-        <div className="flex items-center gap-2 mb-1">
-          <span className="eyebrow text-[#c8531c]">Janam Patri Setup</span>
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="px-2.5 py-1 rounded-full bg-[#f97316]/15 border border-[#f97316]/40 text-[#fb923c] text-[11px] font-bold tracking-wider uppercase flex items-center gap-1.5">
+            <Sparkles size={12} className="animate-pulse" />
+            <span>Janma Patri Setup</span>
+          </div>
+          <span className="text-slate-400 text-xs">• Audit-Verified Engine</span>
         </div>
-        <h2 className="font-display text-2xl font-bold text-[#1b1612]">
-          Birth Chart (Kundli) Details
+
+        <h2 className="font-display text-2xl sm:text-3xl font-bold bg-gradient-to-r from-amber-200 via-orange-100 to-amber-400 bg-clip-text text-transparent">
+          Enter Your Birth Details
         </h2>
-        <p className="text-xs text-[#786a55] mt-1 mb-5">
-          Your accurate birth coordinates enable our astrologers and algorithms to calculate exact Lagna, Moon sign, and planetary transits.
+        <p className="text-xs sm:text-sm text-slate-400 mt-1 mb-6 leading-relaxed">
+          Provide accurate birth coordinates for exact Vedic Lagna, Moon sign, and Vimshottari Dasha transits.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Full Name */}
           <div>
-            <label className="text-xs font-bold text-[#3d342a] uppercase tracking-wider block mb-1">
-              Your Name
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
+              Full Name
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="e.g. Rahul Sharma"
+                placeholder="Enter your full name"
                 required
-                className="w-full rounded-xl bg-[#f6efdc] border border-[#c9b884] px-4 py-2.5 text-sm text-[#1b1612] focus:border-[#c8531c] focus:outline-none"
+                className="w-full rounded-xl bg-slate-900/80 border border-slate-700/80 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#06b6d4] focus:ring-1 focus:ring-[#06b6d4] focus:outline-none transition-all"
               />
-              <User size={16} className="absolute right-3.5 top-3 text-[#a89a7d]" />
+              <User size={18} className="absolute right-3.5 top-3.5 text-slate-500" />
             </div>
           </div>
 
           {/* Gender */}
           <div>
-            <label className="text-xs font-bold text-[#3d342a] uppercase tracking-wider block mb-1">
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
               Gender
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(["male", "female", "other"] as const).map((g) => (
+            <div className="grid grid-cols-3 gap-2.5">
+              {[
+                { id: "male", label: "Male ♂" },
+                { id: "female", label: "Female ♀" },
+                { id: "other", label: "Other ⚧" },
+              ].map((g) => (
                 <button
-                  key={g}
+                  key={g.id}
                   type="button"
-                  onClick={() => setGender(g)}
-                  className={`py-2 rounded-xl text-xs font-semibold border capitalize transition-all cursor-pointer ${
-                    gender === g
-                      ? "bg-[#fae6cf] border-[#c8531c] text-[#5e2308]"
-                      : "bg-[#f6efdc] border-[#e6d9b7] text-[#3d342a]"
+                  onClick={() => setGender(g.id as any)}
+                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    gender === g.id
+                      ? "bg-gradient-to-r from-[#f97316]/20 to-[#fb923c]/20 border-[#f97316] text-[#fb923c] shadow-xs shadow-[#f97316]/20"
+                      : "bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700"
                   }`}
                 >
-                  {g}
+                  {g.label}
                 </button>
               ))}
             </div>
@@ -106,7 +152,7 @@ export default function OnboardingModal({
 
           {/* Date of Birth */}
           <div>
-            <label className="text-xs font-bold text-[#3d342a] uppercase tracking-wider block mb-1">
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
               Date of Birth
             </label>
             <div className="relative">
@@ -115,63 +161,85 @@ export default function OnboardingModal({
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
                 required
-                className="w-full rounded-xl bg-[#f6efdc] border border-[#c9b884] px-4 py-2.5 text-sm text-[#1b1612] focus:border-[#c8531c] focus:outline-none"
+                className="w-full rounded-xl bg-slate-900/80 border border-slate-700/80 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#06b6d4] focus:ring-1 focus:ring-[#06b6d4] focus:outline-none transition-all [color-scheme:dark]"
               />
             </div>
           </div>
 
           {/* Time of Birth */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-[#3d342a] uppercase tracking-wider">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
                 Time of Birth
               </label>
-              <label className="flex items-center gap-1.5 text-xs text-[#786a55] cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={birthTimeUnknown}
                   onChange={(e) => setBirthTimeUnknown(e.target.checked)}
-                  className="accent-[#c8531c]"
+                  className="accent-[#f97316] rounded"
                 />
-                <span>I don&rsquo;t know exact time</span>
+                <span>Exact time unknown</span>
               </label>
             </div>
-            <input
-              type="time"
-              value={birthTime}
-              disabled={birthTimeUnknown}
-              onChange={(e) => setBirthTime(e.target.value)}
-              className="w-full rounded-xl bg-[#f6efdc] border border-[#c9b884] px-4 py-2.5 text-sm text-[#1b1612] focus:border-[#c8531c] focus:outline-none disabled:opacity-50"
-            />
+            <div className="relative">
+              <input
+                type="time"
+                value={birthTime}
+                disabled={birthTimeUnknown}
+                onChange={(e) => setBirthTime(e.target.value)}
+                className="w-full rounded-xl bg-slate-900/80 border border-slate-700/80 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#06b6d4] focus:ring-1 focus:ring-[#06b6d4] focus:outline-none disabled:opacity-40 transition-all [color-scheme:dark]"
+              />
+              <Clock size={18} className="absolute right-3.5 top-3.5 text-slate-500" />
+            </div>
           </div>
 
           {/* Birth Place */}
           <div>
-            <label className="text-xs font-bold text-[#3d342a] uppercase tracking-wider block mb-1">
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">
               Birth Place (City, State)
             </label>
-            <div className="relative">
+            <div className="relative mb-2">
               <input
                 type="text"
                 value={birthPlace}
                 onChange={(e) => setBirthPlace(e.target.value)}
                 placeholder="e.g. Varanasi, UP, India"
                 required
-                className="w-full rounded-xl bg-[#f6efdc] border border-[#c9b884] px-4 py-2.5 text-sm text-[#1b1612] focus:border-[#c8531c] focus:outline-none"
+                className="w-full rounded-xl bg-slate-900/80 border border-slate-700/80 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-[#06b6d4] focus:ring-1 focus:ring-[#06b6d4] focus:outline-none transition-all"
               />
-              <MapPin size={16} className="absolute right-3.5 top-3 text-[#a89a7d]" />
+              <MapPin size={18} className="absolute right-3.5 top-3.5 text-slate-500" />
+            </div>
+
+            {/* Quick City Chips */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              <span className="text-[11px] text-slate-400 self-center mr-1">Popular:</span>
+              {POPULAR_CITIES.map((city) => (
+                <button
+                  key={city}
+                  type="button"
+                  onClick={() => setBirthPlace(city)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                    birthPlace === city
+                      ? "bg-[#06b6d4]/20 border-[#06b6d4] text-[#22d3ee]"
+                      : "bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300"
+                  }`}
+                >
+                  {city.split(",")[0]}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="pt-2">
+          {/* Action Button */}
+          <div className="pt-3">
             <button
               id="btn-save-profile"
               type="submit"
-              className="btn-saffron w-full py-3 text-sm flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#f97316] via-[#ea580c] to-[#d97706] hover:from-[#fb923c] hover:to-[#f97316] shadow-lg shadow-[#f97316]/25 hover:shadow-[#f97316]/40 transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#f97316]/30"
             >
-              <Sparkles size={16} />
-              Save & Recalculate Chart
+              <Sparkles size={18} />
+              Calculate My Janma Kundli
             </button>
           </div>
         </form>
