@@ -206,12 +206,35 @@ export default function App({ isClerkConfigured = false }: AppProps) {
   const [inspectedCounsellor, setInspectedCounsellor] = useState<Counsellor | null>(null);
   const [activeChatCounsellor, setActiveChatCounsellor] = useState<Counsellor | null>(null);
   const [activeCallCounsellor, setActiveCallCounsellor] = useState<Counsellor | null>(null);
+  const [pendingSession, setPendingSession] = useState<{ type: "chat" | "call"; counsellor: Counsellor } | null>(null);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isOrchestratorOpen, setIsOrchestratorOpen] = useState(false);
   const [activeTrace, setActiveTrace] = useState<OrchestratorTrace | null>(null);
   const [kundli, setKundli] = useState<KundliData | null>(null);
   const [creditProfile, setCreditProfile] = useState(AICreditManager.getProfile);
+
+  const handleStartChat = (c: Counsellor) => {
+    requireAuth(() => {
+      if (!isProfileFullySet(userProfile)) {
+        setPendingSession({ type: "chat", counsellor: c });
+        setIsOnboardingOpen(true);
+        return;
+      }
+      setActiveChatCounsellor(c);
+    });
+  };
+
+  const handleStartCall = (c: Counsellor) => {
+    requireAuth(() => {
+      if (!isProfileFullySet(userProfile)) {
+        setPendingSession({ type: "call", counsellor: c });
+        setIsOnboardingOpen(true);
+        return;
+      }
+      setActiveCallCounsellor(c);
+    });
+  };
 
   // Auto-prompt onboarding modal if birth details are missing
   useEffect(() => {
@@ -222,6 +245,19 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       return () => clearTimeout(timer);
     }
   }, [userProfile]);
+
+  // Resume pending chat/call after onboarding completes
+  useEffect(() => {
+    if (isProfileFullySet(userProfile) && pendingSession) {
+      const { type, counsellor } = pendingSession;
+      setPendingSession(null);
+      if (type === "chat") {
+        setActiveChatCounsellor(counsellor);
+      } else if (type === "call") {
+        setActiveCallCounsellor(counsellor);
+      }
+    }
+  }, [userProfile, pendingSession]);
 
   // Sync Kundli data with birth chart profile
   useEffect(() => {
@@ -245,7 +281,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       }
     }
     loadKundli();
-  }, [userProfile]);
+  }, [userProfile.birthDate, userProfile.birthTime, userProfile.birthPlace, userProfile.displayName]);
 
   // Profile persistence — handled by useUserSession hook, but we still sync localProfile
   useEffect(() => {
@@ -344,65 +380,75 @@ export default function App({ isClerkConfigured = false }: AppProps) {
 
   // Active Live Voice Call View
   if (activeCallCounsellor) {
-    return (
-      <VoiceCallClient
-        counsellor={activeCallCounsellor}
-        userProfile={userProfile}
-        paidCredits={paidCredits}
-        onEndCall={() => setActiveCallCounsellor(null)}
-        onDeductBalance={handleDeductCall}
-        onOpenWallet={() => setIsWalletOpen(true)}
-        onSwitchToChat={() => {
-          const c = activeCallCounsellor;
-          setActiveCallCounsellor(null);
-          setActiveChatCounsellor(c);
-        }}
-      />
-    );
+    if (!isProfileFullySet(userProfile)) {
+      setActiveCallCounsellor(null);
+      setIsOnboardingOpen(true);
+    } else {
+      return (
+        <VoiceCallClient
+          counsellor={activeCallCounsellor}
+          userProfile={userProfile}
+          paidCredits={paidCredits}
+          onEndCall={() => setActiveCallCounsellor(null)}
+          onDeductBalance={handleDeductCall}
+          onOpenWallet={() => setIsWalletOpen(true)}
+          onSwitchToChat={() => {
+            const c = activeCallCounsellor;
+            setActiveCallCounsellor(null);
+            handleStartChat(c);
+          }}
+        />
+      );
+    }
   }
 
   // Active Live Astrologer Chat View
   if (activeChatCounsellor) {
-    return (
-      <div className="h-[100dvh] flex flex-col bg-[#f6efdc]">
-        <AiChatClient
-          counsellor={activeChatCounsellor}
-          userProfile={userProfile}
-          kundli={kundli}
-          freeCredits={freeCredits}
-          paidCredits={paidCredits}
-          onBack={() => setActiveChatCounsellor(null)}
-          onStartCall={(c) => {
-            setActiveChatCounsellor(null);
-            setActiveCallCounsellor(c);
-          }}
-          onDeductChat={handleDeductChat}
-          onOpenWallet={() => setIsWalletOpen(true)}
-          onOpenOrchestrator={(trace) => {
-            if (trace) setActiveTrace(trace);
-            setIsOrchestratorOpen(true);
-          }}
-          onOpenOnboarding={() => setIsOnboardingOpen(true)}
-        />
-        {isWalletOpen && (
-          <WalletModal
-            userId={clerkUserId || "default"}
+    if (!isProfileFullySet(userProfile)) {
+      setActiveChatCounsellor(null);
+      setIsOnboardingOpen(true);
+    } else {
+      return (
+        <div className="h-[100dvh] flex flex-col bg-[#f6efdc]">
+          <AiChatClient
+            counsellor={activeChatCounsellor}
+            userProfile={userProfile}
+            kundli={kundli}
             freeCredits={freeCredits}
             paidCredits={paidCredits}
-            claimStreak={claimStreak}
-            onClose={() => setIsWalletOpen(false)}
-            onRecharge={(amount, bonus, isTrial) => handleRecharge(amount, bonus, isTrial)}
+            onBack={() => setActiveChatCounsellor(null)}
+            onStartCall={(c) => {
+              setActiveChatCounsellor(null);
+              handleStartCall(c);
+            }}
+            onDeductChat={handleDeductChat}
+            onOpenWallet={() => setIsWalletOpen(true)}
+            onOpenOrchestrator={(trace) => {
+              if (trace) setActiveTrace(trace);
+              setIsOrchestratorOpen(true);
+            }}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
           />
-        )}
-        <OrchestratorHUD
-          isOpen={isOrchestratorOpen}
-          onClose={() => setIsOrchestratorOpen(false)}
-          activeTrace={activeTrace}
-          userProfile={userProfile}
-          kundli={kundli}
-        />
-      </div>
-    );
+          {isWalletOpen && (
+            <WalletModal
+              userId={clerkUserId || "default"}
+              freeCredits={freeCredits}
+              paidCredits={paidCredits}
+              claimStreak={claimStreak}
+              onClose={() => setIsWalletOpen(false)}
+              onRecharge={(amount, bonus, isTrial) => handleRecharge(amount, bonus, isTrial)}
+            />
+          )}
+          <OrchestratorHUD
+            isOpen={isOrchestratorOpen}
+            onClose={() => setIsOrchestratorOpen(false)}
+            activeTrace={activeTrace}
+            userProfile={userProfile}
+            kundli={kundli}
+          />
+        </div>
+      );
+    }
   }
 
   return (
@@ -454,8 +500,8 @@ export default function App({ isClerkConfigured = false }: AppProps) {
         {currentRoute.page === "landing" && (
           <LandingPage
             onNavigate={handleNavigate}
-            onStartChat={(c) => requireAuth(() => setActiveChatCounsellor(c))}
-            onStartCall={(c) => requireAuth(() => setActiveCallCounsellor(c))}
+            onStartChat={handleStartChat}
+            onStartCall={handleStartCall}
             userProfile={userProfile}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
           />
@@ -490,8 +536,8 @@ export default function App({ isClerkConfigured = false }: AppProps) {
           <AstrologerProfilePage
             slug={currentRoute.slug}
             onNavigate={handleNavigate}
-            onStartChat={(c) => requireAuth(() => setActiveChatCounsellor(c))}
-            onStartCall={(c) => requireAuth(() => setActiveCallCounsellor(c))}
+            onStartChat={handleStartChat}
+            onStartCall={handleStartCall}
             userProfile={userProfile}
           />
         )}
@@ -614,7 +660,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <button
                   type="button"
-                  onClick={() => requireAuth(() => setActiveChatCounsellor(SEED_COUNSELLORS[0]))}
+                  onClick={() => handleStartChat(SEED_COUNSELLORS[0])}
                   className="btn-cosmic-teal text-sm px-8 py-3 w-full sm:w-auto flex items-center justify-center gap-2"
                 >
                   <MessageCircle size={18} />
@@ -622,7 +668,7 @@ export default function App({ isClerkConfigured = false }: AppProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => requireAuth(() => setActiveCallCounsellor(SEED_COUNSELLORS[0]))}
+                  onClick={() => handleStartCall(SEED_COUNSELLORS[0])}
                   className="btn-cosmic-primary text-sm px-8 py-3 w-full sm:w-auto flex items-center justify-center gap-2"
                 >
                   <Phone size={18} />
@@ -672,16 +718,12 @@ export default function App({ isClerkConfigured = false }: AppProps) {
           counsellor={inspectedCounsellor}
           onClose={() => setInspectedCounsellor(null)}
           onStartChat={(c) => {
-            requireAuth(() => {
-              setInspectedCounsellor(null);
-              setActiveChatCounsellor(c);
-            });
+            setInspectedCounsellor(null);
+            handleStartChat(c);
           }}
           onStartCall={(c) => {
-            requireAuth(() => {
-              setInspectedCounsellor(null);
-              setActiveCallCounsellor(c);
-            });
+            setInspectedCounsellor(null);
+            handleStartCall(c);
           }}
         />
       )}
@@ -702,7 +744,10 @@ export default function App({ isClerkConfigured = false }: AppProps) {
       {isOnboardingOpen && (
         <OnboardingModal
           initialProfile={userProfile}
-          onClose={() => setIsOnboardingOpen(false)}
+          onClose={() => {
+            setIsOnboardingOpen(false);
+            setPendingSession(null);
+          }}
           onSave={(updated) => { setLocalProfile(updated); updateProfile(updated); }}
         />
       )}
